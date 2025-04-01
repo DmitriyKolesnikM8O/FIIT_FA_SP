@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.25 FATAL_ERROR)
 
+if(POLICY CMP0167)
+  cmake_policy(SET CMP0167 NEW)
+endif()
+
 project(mp_os LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 23)
@@ -22,7 +26,31 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(nlohmann_json)
 
+set(CROW_BUILD_EXAMPLES OFF)
+set(CROW_BUILD_TESTS OFF)
+set(CROW_INSTALL ON)
+
+FetchContent_Declare(
+        crow
+        GIT_REPOSITORY https://github.com/CrowCpp/Crow.git
+        GIT_TAG v1.0+5
+)
+FetchContent_MakeAvailable(crow)
+
 find_package(Boost COMPONENTS system container REQUIRED) # Ставить через vcpkg
+
+if(POLICY CMP0167)
+  cmake_policy(SET CMP0167 NEW)
+endif()
+
+add_library(crow_lib INTERFACE)
+target_include_directories(crow_lib INTERFACE ${CMAKE_BINARY_DIR}/_deps/crow-src/include)
+target_link_libraries(crow_lib INTERFACE Boost::boost)
+target_compile_definitions(crow_lib INTERFACE 
+    BOOST_ASIO_ENABLE_OLD_SERVICES
+    BOOST_ALLOW_DEPRECATED_HEADERS)
+
+add_library(crow ALIAS crow_lib)
 
 add_subdirectory(allocator)
 add_subdirectory(arithmetic)

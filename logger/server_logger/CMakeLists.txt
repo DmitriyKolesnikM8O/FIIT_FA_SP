@@ -1,5 +1,5 @@
+# add_subdirectory(tests)
 add_subdirectory(tests)
-
 
 add_library(
         mp_os_lggr_srvr_lggr
@@ -10,7 +10,6 @@ target_include_directories(
         mp_os_lggr_srvr_lggr
         PUBLIC
         ./include)
-
 target_link_libraries(
         mp_os_lggr_srvr_lggr
         PUBLIC
