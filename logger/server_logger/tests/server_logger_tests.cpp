@@ -4,7 +4,7 @@
 #include <chrono>
 #include <iostream>
 
-// Простая встроенная реализация сервера для тестов
+
 class test_server {
     crow::SimpleApp app;
     std::thread server_thread;
@@ -12,17 +12,17 @@ class test_server {
 
 public:
     explicit test_server(uint16_t port = 9200) {
-        // Настраиваем маршрут
+        
         CROW_ROUTE(app, "/log").methods(crow::HTTPMethod::POST)
         ([](const crow::request& req) {
             std::cout << "Received log: " << req.body << std::endl;
             return crow::response(200, "Log received");
         });
 
-        // Настраиваем сервер
+        
         app.bindaddr("0.0.0.0").port(port);
 
-        // Запускаем в отдельном потоке
+        
         server_thread = std::thread([this]() {
             try {
                 app.run();
@@ -35,7 +35,7 @@ public:
     }
 
     ~test_server() {
-        // Останавливаем сервер
+        
         app.stop();
         if (server_thread.joinable()) {
             server_thread.join();
@@ -46,10 +46,10 @@ public:
 
 int main()
 {
-    // Создаем встроенный тестовый сервер
+    
     test_server server(9200);
 
-    // Даем серверу время запуститься
+    
     std::this_thread::sleep_for(std::chrono::seconds(1));
     std::cout << "Starting logger tests..." << std::endl;
 
@@ -70,7 +70,7 @@ int main()
 
     std::cout << "Logs sent" << std::endl;
 
-    // Даем время на завершение обработки
+    
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
     std::cout << "Test completed successfully" << std::endl;

@@ -12,17 +12,20 @@
 class server_logger_builder final:
     public logger_builder
 {
+    static constexpr const char* DEFAULT_DESTINATION = "http://localhost:9200";
+    static constexpr const char* DEFAULT_FORMAT = "%d %t [%s] %m";
 
     std::string _destination;
 
     std::unordered_map<logger::severity ,std::pair<std::string, bool>> _output_streams;
+    std::string _log_format;
 
 public:
 
-    server_logger_builder() : _destination("http://localhost:9200"){}
+    server_logger_builder() : _destination(DEFAULT_DESTINATION), _log_format(DEFAULT_FORMAT) {}
 
 private:
-    std::string _log_format = "%d %t [%s] %m";
+    
 
 public:
 

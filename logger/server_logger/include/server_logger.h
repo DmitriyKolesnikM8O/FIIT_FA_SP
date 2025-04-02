@@ -11,10 +11,13 @@ class server_logger final:
 {
     std::string _destination;
     std::unordered_map<logger::severity, std::pair<std::string, bool>> _streams;
+    std::string _log_format;
 
     // httplib::Client _client;
 
-    server_logger(const std::string& dest, const std::unordered_map<logger::severity ,std::pair<std::string, bool>>& streams);
+    server_logger(const std::string& dest, 
+                 const std::unordered_map<logger::severity, std::pair<std::string, bool>>& streams,
+                 const std::string& log_format);
 
     friend server_logger_builder;
 
@@ -36,6 +39,9 @@ public:
     [[nodiscard]] logger& log(
         const std::string &message,
         logger::severity severity) & override;
+
+    
+    std::string format_log_message(const std::string& message, logger::severity severity) const;
 
 };
 
