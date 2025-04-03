@@ -12,8 +12,8 @@
 class server_logger_builder final:
     public logger_builder
 {
-    static constexpr const char* DEFAULT_DESTINATION = "http://localhost:9200";
-    static constexpr const char* DEFAULT_FORMAT = "%d %t [%s] %m";
+    static constexpr auto DEFAULT_DESTINATION = "http://localhost:9200";
+    static constexpr auto DEFAULT_FORMAT = "%d %t [%s] %m";
 
     std::string _destination;
 

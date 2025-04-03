@@ -2,6 +2,7 @@
     "files.associations": {
         "stdexcept": "cpp",
         "unordered_map": "cpp",
-        "iosfwd": "cpp"
+        "iosfwd": "cpp",
+        "format": "cpp"
     }
 }

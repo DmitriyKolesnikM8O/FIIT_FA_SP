@@ -3,19 +3,25 @@
 
 logger_builder& server_logger_builder::add_file_stream(
         std::string const &stream_file_path,
-        logger::severity severity) &
+        const logger::severity severity) &
 {
+    if (stream_file_path.empty()) {
+        throw std::invalid_argument("File stream path cannot be empty");
+    }
+    // Простая проверка на недопустимые символы в имени файла
+    if (stream_file_path.find_first_of("\\/:*?\"<>|") != std::string::npos) {
+        throw std::invalid_argument("File stream path contains invalid characters: " + stream_file_path);
+    }
     _output_streams[severity] = {stream_file_path, true};
     return *this;
 }
 
 logger_builder& server_logger_builder::add_console_stream(
-        logger::severity severity) &
+        const logger::severity severity) &
 {
-    _output_streams[severity] = {"", true};  
+    _output_streams[severity] = {"console", true};
     return *this;
 }
-
 
 logger_builder& server_logger_builder::transform_with_configuration(
         std::string const &configuration_file_path,
@@ -26,12 +32,10 @@ logger_builder& server_logger_builder::transform_with_configuration(
         throw std::runtime_error("Cannot open config file: " + configuration_file_path);
     }
 
-
     std::string json_str((std::istreambuf_iterator<char>(config_file)), std::istreambuf_iterator<char>());
     if (json_str.empty()) {
         throw std::runtime_error("Config file is empty!");
     }
-
 
     nlohmann::json root;
     try {
@@ -39,7 +43,6 @@ logger_builder& server_logger_builder::transform_with_configuration(
     } catch (const std::exception &e) {
         throw std::runtime_error("JSON parsing error: " + std::string(e.what()));
     }
-
 
     if (!root.contains(configuration_path)) {
         throw std::runtime_error("Configuration path not found in JSON: " + configuration_path);
@@ -50,11 +53,9 @@ logger_builder& server_logger_builder::transform_with_configuration(
         throw std::runtime_error("Configuration path must be a JSON object!");
     }
 
-
     if (config.contains("destination")) {
         _destination = config["destination"].get<std::string>();
     }
-
 
     if (config.contains("format")) {
         _log_format = config["format"].get<std::string>();
@@ -62,7 +63,7 @@ logger_builder& server_logger_builder::transform_with_configuration(
 
     if (config.contains("streams")) {
         for (const auto& stream : config["streams"]) {
-            std::string type = stream["type"].get<std::string>();
+            auto type = stream["type"].get<std::string>();
             logger::severity severity = string_to_severity(stream["severity"].get<std::string>());
 
             if (type == "file") {
@@ -76,17 +77,15 @@ logger_builder& server_logger_builder::transform_with_configuration(
     return *this;
 }
 
-
-
 logger_builder& server_logger_builder::clear() &
 {
     _output_streams.clear();
-    _destination = DEFAULT_DESTINATION; 
-    _log_format = DEFAULT_FORMAT; 
+    _destination = DEFAULT_DESTINATION;
+    _log_format = DEFAULT_FORMAT;
     return *this;
 }
 
-logger *server_logger_builder::build() const
+logger* server_logger_builder::build() const
 {
     return new server_logger(_destination, _output_streams, _log_format);
 }

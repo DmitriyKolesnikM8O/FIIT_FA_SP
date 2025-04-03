@@ -10,16 +10,13 @@
 class server
 {
     crow::SimpleApp app;
-    std::thread server_thread; 
-
     std::unordered_map<int, std::unordered_map<logger::severity, std::pair<std::string, bool>>> _streams;
-
     std::shared_mutex _mut;
-    bool running = true;
+    std::thread server_thread;
 
 public:
-
     explicit server(uint16_t port = 9200);
+    void stop();
 
     server(const server&) = delete;
     server& operator=(const server&) = delete;

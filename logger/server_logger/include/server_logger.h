@@ -32,7 +32,7 @@ public:
 
     server_logger &operator=(server_logger &&other) noexcept;
 
-    ~server_logger() noexcept final;
+    ~server_logger() noexcept override final;
 
 public:
 
