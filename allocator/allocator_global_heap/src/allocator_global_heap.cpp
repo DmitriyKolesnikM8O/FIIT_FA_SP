@@ -1,60 +1,93 @@
-#include <not_implemented.h>
 #include "../include/allocator_global_heap.h"
+#include <sstream>
 
-allocator_global_heap::allocator_global_heap(
-    logger *logger)
+allocator_global_heap::allocator_global_heap(logger *logger)
+    : _logger(logger)
 {
-    throw not_implemented("allocator_global_heap::allocator_global_heap(logger *)", "your code should be here...");
-}
-
-[[nodiscard]] void *allocator_global_heap::do_allocate_sm(
-    size_t size)
-{
-    throw not_implemented("[[nodiscard]] void *allocator_global_heap::do_allocate_sm(size_t)", "your code should be here...");
-}
-
-void allocator_global_heap::do_deallocate_sm(
-    void *at)
-{
-    throw not_implemented("void allocator_global_heap::do_deallocate_sm(void *)", "your code should be here...");
-}
-
-inline logger *allocator_global_heap::get_logger() const
-{
-    throw not_implemented("inline logger *allocator_global_heap::get_logger() const", "your code should be here...");
-}
-
-inline std::string allocator_global_heap::get_typename() const
-{
-    throw not_implemented("inline std::string allocator_global_heap::get_typename() const", "your code should be here...");
+    trace_with_guard("allocator_global_heap constructor started");
+    trace_with_guard("allocator_global_heap constructor finished");
 }
 
 allocator_global_heap::~allocator_global_heap()
 {
-    throw not_implemented("allocator_global_heap::~allocator_global_heap()", "your code should be here...");
+    trace_with_guard("allocator_global_heap destructor started");
+    trace_with_guard("allocator_global_heap destructor finished");
 }
 
 allocator_global_heap::allocator_global_heap(const allocator_global_heap &other)
+    : _logger(other._logger)
 {
-    throw not_implemented("allocator_global_heap::allocator_global_heap(const allocator_global_heap &other)", "your code should be here...");
+    trace_with_guard("allocator_global_heap copy constructor started");
+    trace_with_guard("allocator_global_heap copy constructor finished");
 }
 
 allocator_global_heap &allocator_global_heap::operator=(const allocator_global_heap &other)
 {
-    throw not_implemented("allocator_global_heap &allocator_global_heap::operator=(const allocator_global_heap &other)", "your code should be here...");
-}
-
-bool allocator_global_heap::do_is_equal(const std::pmr::memory_resource &other) const noexcept
-{
-    throw not_implemented("bool allocator_global_heap::do_is_equal(const std::pmr::memory_resource &other) const noexcept", "your code should be here...");
+    if (this != &other)
+    {
+        trace_with_guard("allocator_global_heap copy assignment started");
+        _logger = other._logger;
+        trace_with_guard("allocator_global_heap copy assignment finished");
+    }
+    return *this;
 }
 
 allocator_global_heap::allocator_global_heap(allocator_global_heap &&other) noexcept
+    : _logger(other._logger)
 {
-    throw not_implemented("allocator_global_heap::allocator_global_heap(allocator_global_heap &&) noexcept", "your code should be here...");
+    trace_with_guard("allocator_global_heap move constructor started");
+    trace_with_guard("allocator_global_heap move constructor finished");
 }
 
 allocator_global_heap &allocator_global_heap::operator=(allocator_global_heap &&other) noexcept
 {
-    throw not_implemented("allocator_global_heap &allocator_global_heap::operator=(allocator_global_heap &&) noexcept", "your code should be here...");
+    if (this != &other)
+    {
+        trace_with_guard("allocator_global_heap move assignment started");
+        _logger = other._logger;
+        trace_with_guard("allocator_global_heap move assignment finished");
+    }
+    return *this;
+}
+
+void* allocator_global_heap::do_allocate_sm(const size_t size)
+{
+    debug_with_guard("Starting allocation of size " + std::to_string(size));
+    try
+    {
+        void* ptr = ::operator new(size);
+        std::ostringstream oss;
+        oss << "0x" << std::hex << reinterpret_cast<std::uintptr_t>(ptr);
+        debug_with_guard("Successfully allocated memory at " + oss.str());
+        return ptr;
+    }
+    catch (const std::bad_alloc& e)
+    {
+        error_with_guard("Failed to allocate memory: " + std::string(e.what()));
+        throw;
+    }
+}
+
+void allocator_global_heap::do_deallocate_sm(void* at)
+{
+    std::ostringstream oss;
+    oss << "0x" << std::hex << reinterpret_cast<std::uintptr_t>(at);
+    debug_with_guard("Starting deallocation of memory at " + oss.str());
+    ::operator delete(at);
+    debug_with_guard("Successfully deallocated memory");
+}
+
+bool allocator_global_heap::do_is_equal(const std::pmr::memory_resource& other) const noexcept
+{
+    return dynamic_cast<const allocator_global_heap*>(&other) != nullptr;
+}
+
+logger* allocator_global_heap::get_logger() const
+{
+    return _logger;
+}
+
+std::string allocator_global_heap::get_typename() const
+{
+    return "allocator_global_heap";
 }
