@@ -30,30 +30,27 @@ logger_builder& client_logger_builder::add_file_stream(
 
         auto &severity_entry = _output_streams[severity];
         
-        // Проверка на дубликаты путей файлов 
+        
         bool duplicate = false;
         for (const auto &stream : severity_entry.first)
         {
             if (stream._stream.first == stream_file_path)
             {
-                // Путь файла уже существует для данного уровня логирования, но мы всё равно добавим его
+                
                 std::cerr << "Warning: File path '" << stream_file_path << "' already added for this severity level" << std::endl;
                 duplicate = true;
                 break;
             }
         }
         
-        // Даже если это дубликат, все равно добавляем поток
-        /* 
-        // Альтернативный вариант: не добавлять дубликаты
-        // Раскомментируйте этот блок и закомментируйте строку "severity_entry.first.emplace_front..."
-        // ниже, если требуется запретить дубликаты файловых потоков
-        if (duplicate) {
-            return *this;
-        }
-        */
         
-        // Пробуем открыть файл для проверки доступности
+        // uncomment if want to disallow duplicates
+        // if (duplicate) {
+        //     return *this;
+        // }
+        
+        
+        
         {
             std::ofstream test_file(stream_file_path, std::ios::app);
             if (!test_file.is_open()) {
@@ -62,6 +59,7 @@ logger_builder& client_logger_builder::add_file_stream(
             }
         }
         
+        //comment if want to disallow duplicates
         severity_entry.first.emplace_front(client_logger::refcounted_stream(stream_file_path));
         return *this;
     } catch (const std::exception& e) {
@@ -74,8 +72,7 @@ logger_builder& client_logger_builder::add_console_stream(
     logger::severity severity) &
 {
     try {
-        // Для консольного вывода нам не нужен refcounted_stream с пустым путем
-        // Просто устанавливаем флаг консольного вывода для данного severity
+        
         _output_streams[severity].second = true;
         return *this;
     } catch (const std::exception& e) {
@@ -103,25 +100,25 @@ logger_builder& client_logger_builder::transform_with_configuration(
         }
         file.close();
 
-        // Получаем нужную секцию конфигурации
+        
         auto node = config.contains(configuration_path) ? 
                     config.at(configuration_path) : config;
         
-        // Получаем формат логов, если указан
+        
         if (node.contains("format"))
         {
             _format = node["format"].get<std::string>();
         }
 
-        // Получаем информацию о severity и потоках вывода
+        
         if (node.contains("severity"))
         {
-            // Обрабатываем каждый уровень severity
+
             for (auto& [severity_name, severity_config] : node["severity"].items())
             {
                 logger::severity severity;
                 
-                // Преобразование строкового представления severity в enum
+                
                 if (severity_name == "trace") severity = logger::severity::trace;
                 else if (severity_name == "debug") severity = logger::severity::debug;
                 else if (severity_name == "information") severity = logger::severity::information;
@@ -133,13 +130,13 @@ logger_builder& client_logger_builder::transform_with_configuration(
                     throw std::runtime_error("Unknown severity level: " + severity_name);
                 }
                 
-                // Добавляем консольный вывод, если указано
+                
                 if (severity_config.contains("console") && severity_config["console"].get<bool>())
                 {
                     add_console_stream(severity);
                 }
                 
-                // Добавляем файловые потоки, если указаны
+                
                 if (severity_config.contains("files") && severity_config["files"].is_array())
                 {
                     for (const auto& file_path : severity_config["files"])
@@ -149,7 +146,7 @@ logger_builder& client_logger_builder::transform_with_configuration(
                 }
             }
         }
-        // Для обратной совместимости с другим форматом конфигурации
+        
         else if (node.contains("streams") && node["streams"].is_array())
         {
             for (const auto& stream : node["streams"])
@@ -189,7 +186,7 @@ logger_builder& client_logger_builder::transform_with_configuration(
     }
     catch (const std::exception& e) {
         std::cerr << "Error in transform_with_configuration: " << e.what() << std::endl;
-        // Не пробрасываем исключение дальше, чтобы не прерывать работу программы
+        
         return *this;
     }
 }
@@ -217,11 +214,11 @@ logger *client_logger_builder::build() const
         if (_format.empty())
         {
             std::cerr << "Warning: Empty format string, using default format \"%m\"" << std::endl;
-            // Используем константу, чтобы избежать изменения mutable переменной в const методе
+
             return new client_logger(_output_streams, "%m");
         }
 
-        // Проверка наличия флага %m в формате
+
         if (_format.find("%m") == std::string::npos)
         {
             std::cerr << "Warning: Format string does not contain message placeholder (%m), messages will not be displayed" << std::endl;
@@ -231,7 +228,7 @@ logger *client_logger_builder::build() const
     }
     catch (const std::exception& e) {
         std::cerr << "Error building logger: " << e.what() << std::endl;
-        throw; // Пробрасываем ошибку дальше, так как без логгера работа бессмысленна
+        throw; 
     }
 }
 
@@ -247,7 +244,7 @@ logger_builder& client_logger_builder::set_format(const std::string &format) &
         {
             _format = format;
             
-            // Проверка наличия флага %m в формате
+            
             if (_format.find("%m") == std::string::npos)
             {
                 std::cerr << "Warning: Format string does not contain message placeholder (%m), messages will not be displayed" << std::endl;
@@ -262,7 +259,7 @@ logger_builder& client_logger_builder::set_format(const std::string &format) &
 
 logger_builder& client_logger_builder::set_destination(const std::string &format) &
 {
-    // Метод не используется в client_logger, но должен быть реализован для соответствия интерфейсу
+    
     std::cerr << "Warning: set_destination is not applicable for client_logger" << std::endl;
     return *this;
 }

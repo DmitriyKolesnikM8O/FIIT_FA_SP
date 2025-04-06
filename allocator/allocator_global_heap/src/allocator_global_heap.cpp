@@ -58,23 +58,34 @@ void* allocator_global_heap::do_allocate_sm(const size_t size)
         void* ptr = ::operator new(size);
         std::ostringstream oss;
         oss << "0x" << std::hex << reinterpret_cast<std::uintptr_t>(ptr);
-        debug_with_guard("Successfully allocated memory at " + oss.str());
+        debug_with_guard("Successfully allocated memory at " + oss.str() + " of size " + std::to_string(size));
         return ptr;
     }
     catch (const std::bad_alloc& e)
     {
-        error_with_guard("Failed to allocate memory: " + std::string(e.what()));
+        error_with_guard("Failed to allocate memory of size " + std::to_string(size) + ": " + std::string(e.what()));
+        throw;
+    }
+    catch (const std::exception& e)
+    {
+        error_with_guard("Unexpected exception during memory allocation: " + std::string(e.what()));
         throw;
     }
 }
 
 void allocator_global_heap::do_deallocate_sm(void* at)
 {
+    if (at == nullptr)
+    {
+        debug_with_guard("Attempted to deallocate NULL pointer - ignoring");
+        return;
+    }
+    
     std::ostringstream oss;
     oss << "0x" << std::hex << reinterpret_cast<std::uintptr_t>(at);
     debug_with_guard("Starting deallocation of memory at " + oss.str());
     ::operator delete(at);
-    debug_with_guard("Successfully deallocated memory");
+    debug_with_guard("Successfully deallocated memory at " + oss.str());
 }
 
 bool allocator_global_heap::do_is_equal(const std::pmr::memory_resource& other) const noexcept
