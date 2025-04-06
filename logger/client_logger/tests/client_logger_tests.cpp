@@ -18,7 +18,7 @@ int main(int argc, char *argv[])
             add_console_stream(logger::severity::trace).
             set_format("[%d %t][%s] %m");
 
-    builder.transform_with_configuration("set.json", "log");
+    // builder.transform_with_configuration("set.json", "log");
 
     std::unique_ptr<logger> log(builder.build());
 

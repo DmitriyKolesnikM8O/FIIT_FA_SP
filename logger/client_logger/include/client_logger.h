@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <forward_list>
 #include <fstream>
+#include <ctime>
 
 class client_logger_builder;
 

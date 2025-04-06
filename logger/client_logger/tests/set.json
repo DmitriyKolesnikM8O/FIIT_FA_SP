@@ -1,0 +1,15 @@
+{
+  "log": {
+    "format": "[%d %t][%s] %m",
+    "severity": {
+      "trace": {
+        "files": ["log_trace.txt"],
+        "console": true
+      },
+      "debug": {
+        "files": ["log_debug.txt"],
+        "console": true
+      }
+    }
+  }
+}
