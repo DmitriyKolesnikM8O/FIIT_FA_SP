@@ -7,7 +7,8 @@ add_executable(
 target_include_directories(
         mp_os_lggr_srvr_lggr_tests
         PRIVATE
-        ${CMAKE_BINARY_DIR}/_deps/crow-src/include)
+        ${CMAKE_BINARY_DIR}/_deps/crow-src/include
+        ${CMAKE_SOURCE_DIR}/external)  # Добавляем путь к external директории с httplib.h
 
 target_compile_definitions(
         mp_os_lggr_srvr_lggr_tests

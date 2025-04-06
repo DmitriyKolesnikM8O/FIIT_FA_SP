@@ -9,7 +9,8 @@ add_library(
 target_include_directories(
         mp_os_lggr_srvr_lggr
         PUBLIC
-        ./include)
+        ./include
+        ${CMAKE_SOURCE_DIR}/external)
 target_link_libraries(
         mp_os_lggr_srvr_lggr
         PUBLIC
@@ -22,3 +23,8 @@ target_link_libraries(
         mp_os_lggr_srvr_lggr
         PUBLIC
         nlohmann_json::nlohmann_json)
+# Удаляем линковку с httplib, так как это header-only библиотека
+# target_link_libraries(
+#        mp_os_lggr_srvr_lggr
+#        PUBLIC
+#        httplib)

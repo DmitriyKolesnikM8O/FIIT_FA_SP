@@ -1,75 +1,101 @@
 #include <not_implemented.h>
+#include <fstream>
 #include "../include/server_logger_builder.h"
+#include <nlohmann/json.hpp>
+#include <set>
 
 logger_builder& server_logger_builder::add_file_stream(
-        std::string const &stream_file_path,
-        const logger::severity severity) &
+    std::string const &stream_file_path,
+    logger::severity severity) &
 {
-    if (stream_file_path.empty()) {
-        throw std::invalid_argument("File stream path cannot be empty");
+    auto it = _output_streams.find(severity);
+    if (it != _output_streams.end()) {
+        // Сохраняем флаг консоли, изменяем только путь к файлу
+        it->second.first = stream_file_path;
+    } else {
+        // Новая запись - файл без консоли
+        _output_streams[severity] = {stream_file_path, false};
     }
-    // Простая проверка на недопустимые символы в имени файла
-    if (stream_file_path.find_first_of("\\/:*?\"<>|") != std::string::npos) {
-        throw std::invalid_argument("File stream path contains invalid characters: " + stream_file_path);
-    }
-    _output_streams[severity] = {stream_file_path, true};
     return *this;
 }
 
 logger_builder& server_logger_builder::add_console_stream(
-        const logger::severity severity) &
+    logger::severity severity) &
 {
-    _output_streams[severity] = {"console", true};
+    auto it = _output_streams.find(severity);
+    if (it != _output_streams.end()) {
+        // Сохраняем путь к файлу, включаем консоль
+        it->second.second = true;
+    } else {
+        // Новая запись - консоль без файла
+        _output_streams[severity] = {"", true};
+    }
     return *this;
 }
 
 logger_builder& server_logger_builder::transform_with_configuration(
-        std::string const &configuration_file_path,
-        std::string const &configuration_path) &
+    std::string const &configuration_file_path,
+    std::string const &configuration_path) &
 {
-    std::ifstream config_file(configuration_file_path);
-    if (!config_file.is_open()) {
-        throw std::runtime_error("Cannot open config file: " + configuration_file_path);
-    }
+    if (!std::filesystem::exists(configuration_file_path))
+        throw std::runtime_error("Configuration file not found: " + configuration_file_path);
 
-    std::string json_str((std::istreambuf_iterator<char>(config_file)), std::istreambuf_iterator<char>());
-    if (json_str.empty()) {
-        throw std::runtime_error("Config file is empty!");
-    }
-
-    nlohmann::json root;
+    nlohmann::json config;
     try {
-        root = nlohmann::json::parse(json_str);
-    } catch (const std::exception &e) {
-        throw std::runtime_error("JSON parsing error: " + std::string(e.what()));
+        std::ifstream file(configuration_file_path);
+        file.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+        file >> config;
+    } catch (const std::exception& ex) {
+        throw std::runtime_error("Failed to read config file: " + std::string(ex.what()));
     }
 
-    if (!root.contains(configuration_path)) {
-        throw std::runtime_error("Configuration path not found in JSON: " + configuration_path);
+    nlohmann::json* section = &config;
+    if (!configuration_path.empty()) {
+        try {
+            section = &config.at(nlohmann::json::json_pointer(configuration_path));
+        } catch (...) {
+            throw std::runtime_error("Configuration path not found: " + configuration_path);
+        }
     }
 
-    nlohmann::json config = root[configuration_path];
-    if (!config.is_object()) {
-        throw std::runtime_error("Configuration path must be a JSON object!");
-    }
+    if (section->contains("destination"))
+        set_destination(section->at("destination").get<std::string>());
 
-    if (config.contains("destination")) {
-        _destination = config["destination"].get<std::string>();
-    }
+    if (section->contains("format"))
+        set_format(section->at("format"));
 
-    if (config.contains("format")) {
-        _log_format = config["format"].get<std::string>();
-    }
+    if (section->contains("streams")) {
+        const nlohmann::json& streams = section->at("streams");
+        if (!streams.is_array())
+            throw std::runtime_error("Streams must be an array");
 
-    if (config.contains("streams")) {
-        for (const auto& stream : config["streams"]) {
-            auto type = stream["type"].get<std::string>();
-            logger::severity severity = string_to_severity(stream["severity"].get<std::string>());
+        for (const auto& stream : streams) {
+            const std::vector<std::string> required_fields = {"type", "severities"};
+            for (const auto& field : required_fields)
+                if (!stream.contains(field))
+                    throw std::runtime_error("Missing field in stream: " + field);
+
+            const std::string type = stream.at("type");
+            if (type != "file" && type != "console")
+                throw std::runtime_error("Invalid stream type: " + type);
+
+            std::vector<logger::severity> severities;
+            for (const auto& sev_str : stream.at("severities")) {
+                severities.push_back(string_to_severity(sev_str));
+            }
 
             if (type == "file") {
-                add_file_stream(stream["path"].get<std::string>(), severity);
-            } else if (type == "console") {
-                add_console_stream(severity);
+                if (!stream.contains("path")) {
+                    throw std::runtime_error("File stream missing 'path'");
+                }
+                const std::string path = stream.at("path");
+                for (auto sev : severities) {
+                    add_file_stream(path, sev);
+                }
+            } else {
+                for (auto sev : severities) {
+                    add_console_stream(sev);
+                }
             }
         }
     }
@@ -79,31 +105,47 @@ logger_builder& server_logger_builder::transform_with_configuration(
 
 logger_builder& server_logger_builder::clear() &
 {
+    _destination = "http://127.0.0.1:9200";
     _output_streams.clear();
-    _destination = DEFAULT_DESTINATION;
-    _log_format = DEFAULT_FORMAT;
     return *this;
 }
 
-logger* server_logger_builder::build() const
+logger *server_logger_builder::build() const
 {
-    return new server_logger(_destination, _output_streams, _log_format);
+    if (_destination.empty())
+        throw std::logic_error("Destination address is not set");
+
+    if (_output_streams.empty())
+        throw std::logic_error("No output streams configured");
+
+    try
+    {
+        return new server_logger(
+            _destination,
+            _format,
+            _output_streams
+        );
+    }
+    catch (const std::exception& ex)
+    {
+        std::cerr << "Failed to create logger: " << ex.what() << std::endl;
+        throw;
+    }
+    catch (...)
+    {
+        std::cerr << "Unknown error during logger creation" << std::endl;
+        throw std::runtime_error("Unknown logger creation error");
+    }
 }
 
 logger_builder& server_logger_builder::set_destination(const std::string& dest) &
 {
-    if (dest.empty()) {
-        throw std::invalid_argument("Destination cannot be empty");
-    }
     _destination = dest;
     return *this;
 }
 
-logger_builder& server_logger_builder::set_format(const std::string& format) &
+logger_builder& server_logger_builder::set_format(const std::string &format) &
 {
-    if (format.empty()) {
-        throw std::invalid_argument("Format string cannot be empty");
-    }
-    _log_format = format;
+    _format = format;
     return *this;
 }

@@ -81,7 +81,7 @@ void client_logger::refcounted_stream::open()
     auto it = _global_streams.find(_stream.first);
     if (it == _global_streams.end())
     {
-        _global_streams[_stream.first] = std::make_pair(1, std::ofstream(_stream.first, std::ios::app));
+        _global_streams[_stream.first] = std::make_pair(1, std::ofstream(_stream.first));
         if (!_global_streams[_stream.first].second.is_open())
         {
             throw std::runtime_error("Failed to open log file: " + _stream.first);

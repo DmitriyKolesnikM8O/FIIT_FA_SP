@@ -3,29 +3,21 @@
 
 #include <logger_builder.h>
 #include <unordered_map>
-#include <fstream>
-#include <sstream>
-#include <stdexcept>
-#include <nlohmann/json.hpp>
 #include "server_logger.h"
 
 class server_logger_builder final:
     public logger_builder
 {
-    static constexpr auto DEFAULT_DESTINATION = "http://localhost:9200";
-    static constexpr auto DEFAULT_FORMAT = "%d %t [%s] %m";
 
     std::string _destination;
+    
+    std::string _format;
 
     std::unordered_map<logger::severity ,std::pair<std::string, bool>> _output_streams;
-    std::string _log_format;
 
 public:
 
-    server_logger_builder() : _destination(DEFAULT_DESTINATION), _log_format(DEFAULT_FORMAT) {}
-
-private:
-    
+    server_logger_builder() : _destination("http://127.0.0.1:9200"), _format("%d %t %s %m") {}
 
 public:
 
