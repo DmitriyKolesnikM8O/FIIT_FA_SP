@@ -10,10 +10,10 @@ logger_builder& server_logger_builder::add_file_stream(
 {
     auto it = _output_streams.find(severity);
     if (it != _output_streams.end()) {
-        // Сохраняем флаг консоли, изменяем только путь к файлу
+
         it->second.first = stream_file_path;
     } else {
-        // Новая запись - файл без консоли
+
         _output_streams[severity] = {stream_file_path, false};
     }
     return *this;
@@ -24,10 +24,10 @@ logger_builder& server_logger_builder::add_console_stream(
 {
     auto it = _output_streams.find(severity);
     if (it != _output_streams.end()) {
-        // Сохраняем путь к файлу, включаем консоль
+
         it->second.second = true;
     } else {
-        // Новая запись - консоль без файла
+
         _output_streams[severity] = {"", true};
     }
     return *this;

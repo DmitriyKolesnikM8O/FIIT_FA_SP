@@ -2,3 +2,5 @@
 - server logger
 - big integer
 - global heap allocator
+- trivial multiplication
+- Karatsuba multiplication

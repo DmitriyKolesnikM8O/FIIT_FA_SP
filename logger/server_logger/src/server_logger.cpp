@@ -37,7 +37,7 @@ logger& server_logger::log(
     const std::string &text,
     logger::severity severity) &
 {
-    // Форматирование сообщения
+
     std::string formatted = _format;
 
     formatted = std::regex_replace(formatted, std::regex("%d"), get_current_date());
@@ -45,7 +45,7 @@ logger& server_logger::log(
     formatted = std::regex_replace(formatted, std::regex("%s"), severity_to_string(severity));
     formatted = std::regex_replace(formatted, std::regex("%m"), text);
 
-    // Формирование JSON
+
     nlohmann::json payload = {
         {"pid", inner_getpid()},
         {"severity", severity_to_string(severity)},
@@ -53,14 +53,14 @@ logger& server_logger::log(
         {"streams", nlohmann::json::array()}
     };
 
-    // Добавление потоков вывода и запись в файл/консоль
+
     if(auto it = _streams.find(severity); it != _streams.end())
     {
         const auto& [path, is_console] = it->second;
 
         if(is_console) {
             payload["streams"].push_back({{"type", "console"}});
-            // Вывод в консоль
+
             std::cout << formatted << std::endl;
         }
 
@@ -70,7 +70,7 @@ logger& server_logger::log(
                 {"path", path}
             });
             
-            // Запись в файл
+
             std::ofstream file(path, std::ios::app);
             if(file.is_open()) {
                 file << formatted << std::endl;
@@ -81,7 +81,7 @@ logger& server_logger::log(
         }
     }
 
-    _client.set_connection_timeout(2); // Таймаут 2 секунды
+    _client.set_connection_timeout(2);
     auto res = _client.Post("/log", payload.dump(), "application/json");
 
     return *this;

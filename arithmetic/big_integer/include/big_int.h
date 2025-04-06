@@ -136,6 +136,10 @@ public:
     std::strong_ordering operator<=>(const big_int& other) const noexcept;
 
     bool operator==(const big_int& other) const noexcept;
+    bool operator<(const big_int& other) const noexcept;
+    bool operator>(const big_int& other) const noexcept;
+    bool operator<=(const big_int& other) const noexcept;
+    bool operator>=(const big_int& other) const noexcept;
 
     big_int& operator<<=(size_t shift) &;
 

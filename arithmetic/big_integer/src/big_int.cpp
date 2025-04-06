@@ -65,9 +65,10 @@ big_int::big_int(const std::string& num, unsigned int radix, pp_allocator<unsign
     }
 
     std::string number = num;
+    bool is_negative = false;
     if (number[0] == '-')
     {
-        _sign = false;
+        is_negative = true;
         number = number.substr(1);
     }
     else if (number[0] == '+')
@@ -86,6 +87,7 @@ big_int::big_int(const std::string& num, unsigned int radix, pp_allocator<unsign
         return;
     }
 
+    // Парсим абсолютное значение как положительное число
     _digits.push_back(0);
     for (char c : number)
     {
@@ -98,7 +100,14 @@ big_int::big_int(const std::string& num, unsigned int radix, pp_allocator<unsign
         *this += big_int(static_cast<long long>(digit), allocator);
     }
 
-    optimise(_digits);
+    // Устанавливаем знак после парсинга
+    _sign = !is_negative;
+
+    // Ноль всегда положительный
+    if (is_zero(_digits))
+    {
+        _sign = true;
+    }
 }
 
 big_int::big_int(pp_allocator<unsigned int> allocator)
@@ -479,26 +488,48 @@ big_int big_int::operator%(const big_int& other) const
 
 std::strong_ordering big_int::operator<=>(const big_int& other) const noexcept
 {
+    // Если числа разных знаков
     if (_sign != other._sign)
     {
+        // Положительное всегда больше отрицательного
         return _sign ? std::strong_ordering::greater : std::strong_ordering::less;
     }
 
+    // Если числа одного знака
+    bool is_positive = _sign;
+    
+    // Если размеры разные
     if (_digits.size() != other._digits.size())
     {
-        auto size_cmp = _digits.size() <=> other._digits.size();
-        return _sign ? size_cmp : (size_cmp == std::strong_ordering::less ? std::strong_ordering::greater : size_cmp == std::strong_ordering::greater ? std::strong_ordering::less : std::strong_ordering::equal);
+        if (is_positive)
+        {
+            return _digits.size() <=> other._digits.size();
+        }
+        else
+        {
+            // Для отрицательных чисел инвертируем результат
+            return other._digits.size() <=> _digits.size();
+        }
     }
 
+    // Если размеры равны, сравниваем поразрядно от старших к младшим
     for (int i = static_cast<int>(_digits.size()) - 1; i >= 0; --i)
     {
         if (_digits[i] != other._digits[i])
         {
-            auto digit_cmp = _digits[i] <=> other._digits[i];
-            return _sign ? digit_cmp : (digit_cmp == std::strong_ordering::less ? std::strong_ordering::greater : digit_cmp == std::strong_ordering::greater ? std::strong_ordering::less : std::strong_ordering::equal);
+            if (is_positive)
+            {
+                return _digits[i] <=> other._digits[i];
+            }
+            else
+            {
+                // Для отрицательных чисел инвертируем результат
+                return other._digits[i] <=> _digits[i];
+            }
         }
     }
 
+    // Числа равны
     return std::strong_ordering::equal;
 }
 

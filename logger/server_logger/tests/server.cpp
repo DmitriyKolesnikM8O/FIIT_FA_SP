@@ -13,7 +13,7 @@ using json = nlohmann::json;
 
 server::server(uint16_t port)
 {
-    // Настройка маршрутов
+
     CROW_ROUTE(app, "/log")
         .methods("POST"_method)
         ([this](const crow::request& req) {
@@ -26,13 +26,13 @@ server::server(uint16_t port)
                 std::cout << data.dump(2) << std::endl;
                 std::cout << "=== End JSON ===" << std::endl;
 
-                // Извлечение данных
+
                 int pid = data["pid"];
                 std::string severity_str = data["severity"];
                 std::string message = data["message"];
                 auto streams = data["streams"];
 
-                // Конвертация уровня логирования
+
                 logger::severity sev;
                 if (severity_str == "TRACE") sev = logger::severity::trace;
                 else if (severity_str == "DEBUG") sev = logger::severity::debug;
@@ -42,7 +42,7 @@ server::server(uint16_t port)
                 else if (severity_str == "CRITICAL") sev = logger::severity::critical;
                 else return crow::response(400, "Invalid severity");
 
-                // Обработка потоков вывода
+
                 for (const auto& stream : streams)
                 {
                     std::string type = stream["type"];
@@ -70,6 +70,6 @@ server::server(uint16_t port)
             }
         });
 
-    // Запуск сервера в конструкторе
+
     app.port(port).run();
 }
