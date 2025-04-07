@@ -1,0 +1,20 @@
+{
+  "destination": "http://127.0.0.1:9200",
+  "format": "%d %t %s %m",
+  "streams": [
+    {
+      "type": "file",
+      "path": "error.log",
+      "severities": ["ERROR", "CRITICAL"]
+    },
+    {
+      "type": "file",
+      "path": "app.log",
+      "severities": ["TRACE", "DEBUG", "INFORMATION", "WARNING"]
+    },
+    {
+      "type": "console",
+      "severities": ["WARNING", "ERROR", "CRITICAL"]
+    }
+  ]
+}

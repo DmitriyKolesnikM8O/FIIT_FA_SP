@@ -48,9 +48,10 @@ server::server(uint16_t port)
                     std::string type = stream["type"];
                     if (type == "file")
                     {
-                        std::string path = stream["path"];
-                        std::ofstream file(path, std::ios::app);
-                        if (file) file << message << "\n";
+
+                         std::string path = stream["path"];
+                         std::ofstream file(path, std::ios::app);
+                         if (file) file << message << "\n";
                     }
                     else if (type == "console")
                     {

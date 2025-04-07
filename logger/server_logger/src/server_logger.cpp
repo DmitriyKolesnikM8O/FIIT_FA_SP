@@ -30,7 +30,7 @@ namespace {
             #endif
             
             std::stringstream ss;
-            ss << std::put_time(&tm_buf, "%Y-%m-%d");
+            ss << std::put_time(&tm_buf, "%d.%m.%Y");
             return ss.str();
         } catch (const std::exception& e) {
             std::cerr << "Error getting date: " << e.what() << std::endl;
@@ -54,6 +54,9 @@ namespace {
             
             std::stringstream ss;
             ss << std::put_time(&tm_buf, "%H:%M:%S");
+            auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                now.time_since_epoch()).count() % 1000;
+            ss << "." << std::setfill('0') << std::setw(3) << ms;
             return ss.str();
         } catch (const std::exception& e) {
             std::cerr << "Error getting time: " << e.what() << std::endl;
@@ -84,6 +87,18 @@ namespace {
         }
         if (severity == "WARNING") {
             return "WARN";
+        }
+        if (severity == "ERROR") {
+            return "ERR";
+        }
+        if (severity == "CRITICAL") {
+            return "CRIT";
+        }
+        if (severity == "TRACE") {
+            return "TRC";
+        }
+        if (severity == "DEBUG") {
+            return "DBG";
         }
         return severity;
     }
@@ -122,10 +137,10 @@ logger& server_logger::log(
         nlohmann::json payload;
         try {
             payload = {
-                {"pid", inner_getpid()},
-                {"severity", server_severity},
-                {"message", formatted},
-                {"streams", nlohmann::json::array()}
+                {"process_id", inner_getpid()},
+                {"level", server_severity},
+                {"log_message", formatted},
+                {"destinations", nlohmann::json::array()}
             };
         } catch (const nlohmann::json::exception& e) {
             std::cerr << "Error creating JSON payload: " << e.what() << std::endl;
@@ -138,15 +153,15 @@ logger& server_logger::log(
 
 
             if (is_console) {
-                payload["streams"].push_back({{"type", "console"}});
+                payload["destinations"].push_back({{"output_type", "console"}});
                 std::cout << formatted << std::endl;
             }
 
 
             if (!path.empty()) {
-                payload["streams"].push_back({
-                    {"type", "file"},
-                    {"path", path}
+                payload["destinations"].push_back({
+                    {"output_type", "file"},
+                    {"file_path", path}
                 });
             }
         }
