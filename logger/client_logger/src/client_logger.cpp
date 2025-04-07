@@ -6,7 +6,7 @@
 #include "../include/client_logger.h"
 #include <not_implemented.h>
 
-// Мьютекс для обеспечения потокобезопасности при доступе к глобальным потокам
+
 static std::mutex global_streams_mutex;
 
 std::unordered_map<std::string, std::pair<size_t, std::ofstream>> client_logger::refcounted_stream::_global_streams;
@@ -17,17 +17,17 @@ logger& client_logger::log(
     logger::severity severity) &
 {
     try {
-        // Проверяем, существует ли настроенный вывод для данного уровня severity
+
         auto it = _output_streams.find(severity);
         if (it == _output_streams.end()) return *this;
 
-        // Форматируем сообщение согласно настройкам формата
+
         std::string formatted = make_format(text, severity);
 
-        // Записываем в каждый файловый поток
+
         for (auto &stream : it->second.first)
         {
-            // Проверяем, что путь не пустой (пустые пути для консольных потоков)
+
             if (!stream._stream.first.empty() && stream._stream.second)
             {
                 try {
@@ -41,7 +41,7 @@ logger& client_logger::log(
             }
         }
 
-        // Если настроен вывод в консоль, выводим сообщение
+
         if (it->second.second)
         {
             try {
@@ -112,14 +112,14 @@ std::string client_logger::make_format(const std::string &message, severity sev)
         return result;
     } catch (const std::exception& e) {
         std::cerr << "Error formatting log message: " << e.what() << std::endl;
-        // Возвращаем неформатированное сообщение в случае ошибки
+        
         return message;
     }
 }
 
 void client_logger::refcounted_stream::open()
 {
-    // Пустой путь не требует открытия файла
+    
     if (_stream.first.empty()) {
         _stream.second = nullptr;
         return;
@@ -173,12 +173,12 @@ client_logger::flag client_logger::char_to_flag(char c) noexcept
 
 client_logger::client_logger(const client_logger &other) : _output_streams(other._output_streams), _format(other._format)
 {
-    // Открываем все потоки для каждого severity
+    
     for (auto &[sev, streams_pair] : _output_streams)
     {
         for (auto &stream : streams_pair.first)
         {
-            // Открываем поток, если путь не пустой
+    
             if (!stream._stream.first.empty()) {
                 stream.open();
             }
@@ -215,7 +215,7 @@ client_logger::~client_logger() noexcept = default;
 
 client_logger::refcounted_stream::refcounted_stream(const std::string &path) : _stream(path, nullptr)
 {
-    // Пустой путь не требует открытия файла и увеличения счетчика ссылок
+    
     if (path.empty()) {
         return;
     }

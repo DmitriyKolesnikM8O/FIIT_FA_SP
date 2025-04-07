@@ -14,7 +14,7 @@ class client_logger final:
     public logger
 {
 private:
-    //region refcounted_stream
+    
 
     class refcounted_stream final
     {
@@ -35,13 +35,13 @@ private:
 
         refcounted_stream& operator=(refcounted_stream&& oth) noexcept;
 
-        //if ofstream* is nullptr initializes it with opened file from global map
+       
         void open();
 
         ~refcounted_stream();
     };
 
-    //region refcounted_stream
+    
 
     enum class flag
     { DATE, TIME, SEVERITY, MESSAGE, NO_FLAG };
@@ -55,7 +55,7 @@ private:
 
 private:
 
-    //opens all streams
+    
     client_logger(const std::unordered_map<logger::severity ,std::pair<std::forward_list<refcounted_stream>, bool>>& streams, std::string format);
 
     std::string make_format(const std::string& message, severity sev) const;

@@ -4,3 +4,4 @@
 - global heap allocator
 - trivial multiplication
 - Karatsuba multiplication
+- trivial division

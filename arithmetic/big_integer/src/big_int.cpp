@@ -27,12 +27,53 @@ namespace
 
 big_int::multiplication_rule big_int::decide_mult(size_t rhs) const noexcept
 {
-    return multiplication_rule::trivial;
+    const size_t lhs_size = _digits.size();
+    
+    // Константы для порогов переключения алгоритмов
+    // Эти значения могут быть настроены на основе бенчмарков для конкретной платформы
+    constexpr size_t KARATSUBA_THRESHOLD = 64;
+    constexpr size_t SCHONHAGE_THRESHOLD = 1024;
+    
+    // Оптимизация для маленьких чисел
+    if (lhs_size < 10 || rhs < 10) {
+        return multiplication_rule::trivial;
+    }
+    
+    // Выбор алгоритма на основе размера операндов
+    const size_t max_size = std::max(lhs_size, rhs);
+    
+    if (max_size < KARATSUBA_THRESHOLD) {
+        return multiplication_rule::trivial;
+    } else if (max_size < SCHONHAGE_THRESHOLD) {
+        return multiplication_rule::Karatsuba;
+    } else {
+        return multiplication_rule::SchonhageStrassen;
+    }
 }
 
 big_int::division_rule big_int::decide_div(size_t rhs) const noexcept
 {
-    return division_rule::trivial;
+    const size_t lhs_size = _digits.size();
+    
+    // Константы для порогов переключения алгоритмов
+    constexpr size_t NEWTON_THRESHOLD = 128;
+    constexpr size_t BURNIKEL_THRESHOLD = 512;
+    
+    // Оптимизация для маленьких чисел
+    if (lhs_size < 10 || rhs < 10) {
+        return division_rule::trivial;
+    }
+    
+    // Выбор алгоритма на основе размера операндов
+    const size_t max_size = std::max(lhs_size, rhs);
+    
+    if (max_size < NEWTON_THRESHOLD) {
+        return division_rule::trivial;
+    } else if (max_size < BURNIKEL_THRESHOLD) {
+        return division_rule::Newton;
+    } else {
+        return division_rule::BurnikelZiegler;
+    }
 }
 
 big_int::big_int(const std::vector<unsigned int, pp_allocator<unsigned int>>& digits, bool sign)
@@ -310,14 +351,18 @@ big_int& big_int::multiply_assign(const big_int& other, multiplication_rule rule
 
 big_int& big_int::operator*=(const big_int& other) &
 {
-    return multiply_assign(other, decide_mult(other._digits.size()));
+    // Выбираем алгоритм умножения в зависимости от размера операндов
+    multiplication_rule rule = decide_mult(other._digits.size());
+    
+    // Делегируем выполнение методу multiply_assign
+    return multiply_assign(other, rule);
 }
 
 big_int& big_int::divide_assign(const big_int& other, division_rule rule) &
 {
     if (is_zero(other._digits))
     {
-        throw std::runtime_error("Division by zero");
+        throw std::logic_error("Division by zero");
     }
 
     if (is_zero(_digits))
@@ -388,14 +433,14 @@ big_int& big_int::modulo_assign(const big_int& other, division_rule rule) &
 {
     if (is_zero(other._digits))
     {
-        throw std::runtime_error("Modulo by zero");
+        throw std::logic_error("Modulo by zero");
     }
-
+    
     if (is_zero(_digits))
     {
         return *this;
     }
-
+    
     big_int abs_this(*this);
     abs_this._sign = true;
     big_int abs_other(other);
@@ -406,7 +451,7 @@ big_int& big_int::modulo_assign(const big_int& other, division_rule rule) &
         _sign = true;
         return *this;
     }
-
+    
     big_int remainder(_digits.get_allocator());
     remainder._digits.clear();
     remainder._digits.push_back(0);
@@ -432,7 +477,7 @@ big_int& big_int::modulo_assign(const big_int& other, division_rule rule) &
                 right = mid - 1;
             }
         }
-
+        
         if (q > 0)
         {
             big_int temp = abs_other * big_int(static_cast<long long>(q), _digits.get_allocator());

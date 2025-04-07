@@ -1,14 +1,14 @@
 add_executable(
         mp_os_lggr_srvr_lggr_tests
         server_logger_tests.cpp
-        server.cpp  # Добавляем server.cpp
+        server.cpp  
 )
 
 target_include_directories(
         mp_os_lggr_srvr_lggr_tests
         PRIVATE
         ${CMAKE_BINARY_DIR}/_deps/crow-src/include
-        ${CMAKE_SOURCE_DIR}/external)  # Добавляем путь к external директории с httplib.h
+        ${CMAKE_SOURCE_DIR}/external) 
 
 target_compile_definitions(
         mp_os_lggr_srvr_lggr_tests
