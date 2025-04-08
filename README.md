@@ -1,7 +1,8 @@
-- client logger
-- server logger
+- client logger (+)
+- server logger (+)
 - big integer
-- global heap allocator
+- global heap allocator (+)
 - trivial multiplication
 - Karatsuba multiplication
 - trivial division
+- buddies system allocator
