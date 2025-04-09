@@ -5,7 +5,7 @@
 #include <cmath>
 #include <cstring>
 #include <new>
-#include <cstdint>  // Для uintptr_t
+#include <cstdint>
 #include "../include/allocator_buddies_system.h"
 
 namespace {
