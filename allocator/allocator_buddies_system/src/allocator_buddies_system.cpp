@@ -6,6 +6,7 @@
 #include <cstring>
 #include <new>
 #include <cstdint>
+#include <iostream>
 #include "../include/allocator_buddies_system.h"
 
 namespace {
@@ -476,7 +477,11 @@ allocator_buddies_system::allocator_buddies_system(const allocator_buddies_syste
         throw std::bad_alloc();
     }
 
-    std::memcpy(_trusted_memory, other._trusted_memory, total_alloc_size_to_copy);
+    std::copy_n(
+        static_cast<const char*>(other._trusted_memory),
+        total_alloc_size_to_copy,
+        static_cast<char*>(_trusted_memory)
+    );
 
     auto* meta = get_metadata(_trusted_memory);
     new (&meta->mutex) std::mutex();
@@ -527,7 +532,12 @@ allocator_buddies_system& allocator_buddies_system::operator=(const allocator_bu
         if (!_trusted_memory) {
             throw std::bad_alloc();
         }
-        std::memcpy(_trusted_memory, other._trusted_memory, total_alloc_size_to_copy);
+        
+        std::copy_n(
+            static_cast<const char*>(other._trusted_memory),
+            total_alloc_size_to_copy,
+            static_cast<char*>(_trusted_memory)
+        );
 
         auto* new_meta = get_metadata(_trusted_memory);
         new (&new_meta->mutex) std::mutex();
