@@ -14,41 +14,38 @@ namespace {
 struct alignas(alignof(std::max_align_t)) allocator_metadata {
     logger* logger_ptr;
     std::pmr::memory_resource* parent_allocator;
+    void* parent_trusted_memory;
     allocator_with_fit_mode::fit_mode fit;
     unsigned char k;
     std::mutex mutex;
-    size_t total_allocated_size; 
+    size_t total_allocated_size;
 
     allocator_metadata() = default;
     ~allocator_metadata() = default;
 };
 
-
 allocator_metadata* get_metadata(void* trusted_memory) {
     return reinterpret_cast<allocator_metadata*>(trusted_memory);
 }
-
 
 size_t calculate_allocator_metadata_size() {
     return sizeof(allocator_metadata);
 }
 
-
 void* get_pool_start(void* trusted_memory) {
     return static_cast<char*>(trusted_memory) + calculate_allocator_metadata_size();
 }
-
 
 void* get_block_metadata(void* block) {
     if (block == nullptr) {
         return nullptr;
     }
 
-    if (reinterpret_cast<uintptr_t>(block) < sizeof(unsigned char)) {
+    if (reinterpret_cast<uintptr_t>(block) < sizeof(void*) + sizeof(unsigned char)) {
         return nullptr;
     }
 
-    void* meta = static_cast<char*>(block) - sizeof(unsigned char);
+    void* meta = static_cast<char*>(block) - (sizeof(void*) + sizeof(unsigned char));
 
     try {
         auto* meta_ptr = static_cast<unsigned char*>(meta);
@@ -61,6 +58,19 @@ void* get_block_metadata(void* block) {
     return meta;
 }
 
+void* get_block_trusted_memory(void* block_meta) {
+    if (block_meta == nullptr) {
+        return nullptr;
+    }
+    return *reinterpret_cast<void**>(static_cast<char*>(block_meta) + sizeof(unsigned char));
+}
+
+void set_block_trusted_memory(void* block_meta, void* trusted_memory) {
+    if (block_meta == nullptr) {
+        return;
+    }
+    *reinterpret_cast<void**>(static_cast<char*>(block_meta) + sizeof(unsigned char)) = trusted_memory;
+}
 
 size_t get_block_size(void* block_meta) {
     if (block_meta == nullptr) {
@@ -75,7 +85,6 @@ size_t get_block_size(void* block_meta) {
     }
 }
 
-
 bool is_block_occupied(void* block_meta) {
     if (block_meta == nullptr) {
         return false;
@@ -89,7 +98,6 @@ bool is_block_occupied(void* block_meta) {
     }
 }
 
-
 void set_block_occupied(void* block_meta, bool occupied) {
     auto* meta = static_cast<unsigned char*>(block_meta);
     if (occupied) {
@@ -99,7 +107,6 @@ void set_block_occupied(void* block_meta, bool occupied) {
     }
 }
 
-
 void set_block_size(void* block_meta, size_t size) {
     auto* meta = static_cast<unsigned char*>(block_meta);
     bool occupied = is_block_occupied(block_meta);
@@ -108,7 +115,6 @@ void set_block_size(void* block_meta, size_t size) {
     set_block_occupied(block_meta, occupied);
 }
 
-
 void* get_buddy(void* block, size_t block_size, void* pool_start, size_t total_size) {
     size_t offset = static_cast<char*>(block) - static_cast<char*>(pool_start);
     size_t buddy_offset = offset ^ block_size;
@@ -116,12 +122,57 @@ void* get_buddy(void* block, size_t block_size, void* pool_start, size_t total_s
     return static_cast<char*>(pool_start) + buddy_offset;
 }
 
-
 size_t next_power_of_two(size_t size) {
     return 1ULL << __detail::nearest_greater_k_of_2(size);
 }
-} 
 
+bool is_pointer_in_pool(void* ptr, void* trusted_memory) {
+    if (!ptr || !trusted_memory) return false;
+
+    auto* meta = get_metadata(trusted_memory);
+    if (!meta) return false;
+
+    void* pool_start = get_pool_start(trusted_memory);
+    void* pool_end = static_cast<char*>(pool_start) + (1ULL << meta->k);
+
+    return ptr >= pool_start && ptr < pool_end;
+}
+
+bool is_pointer_owned(void* ptr, void* trusted_memory) {
+    if (!ptr || !trusted_memory) return false;
+
+    auto* meta = get_metadata(trusted_memory);
+    if (!meta) return false;
+
+    if (meta->logger_ptr) {
+        meta->logger_ptr->log("Checking if pointer " + std::to_string(reinterpret_cast<uintptr_t>(ptr)) +
+                             " is owned by allocator with trusted_memory " + std::to_string(reinterpret_cast<uintptr_t>(trusted_memory)),
+                             logger::severity::debug);
+    }
+
+    if (is_pointer_in_pool(ptr, trusted_memory)) {
+        if (meta->logger_ptr) {
+            meta->logger_ptr->log("Pointer is in pool of allocator with trusted_memory " + std::to_string(reinterpret_cast<uintptr_t>(trusted_memory)),
+                                 logger::severity::debug);
+        }
+        return true;
+    }
+
+    if (meta->parent_trusted_memory) {
+        if (meta->logger_ptr) {
+            meta->logger_ptr->log("Checking parent allocator with trusted_memory " + std::to_string(reinterpret_cast<uintptr_t>(meta->parent_trusted_memory)),
+                                 logger::severity::debug);
+        }
+        return is_pointer_owned(ptr, meta->parent_trusted_memory);
+    }
+
+    if (meta->logger_ptr) {
+        meta->logger_ptr->log("Pointer is not owned by this allocator or its parents", logger::severity::debug);
+    }
+    return false;
+}
+
+}
 
 allocator_buddies_system::~allocator_buddies_system() {
     if (!_trusted_memory) return;
@@ -138,7 +189,6 @@ allocator_buddies_system::~allocator_buddies_system() {
     _trusted_memory = nullptr;
 }
 
-
 allocator_buddies_system::allocator_buddies_system(allocator_buddies_system&& other) noexcept
     : _trusted_memory(other._trusted_memory) {
     other._trusted_memory = nullptr;
@@ -149,7 +199,6 @@ allocator_buddies_system::allocator_buddies_system(allocator_buddies_system&& ot
         }
     }
 }
-
 
 allocator_buddies_system& allocator_buddies_system::operator=(allocator_buddies_system&& other) noexcept {
     if (this != &other) {
@@ -163,7 +212,6 @@ allocator_buddies_system& allocator_buddies_system::operator=(allocator_buddies_
     }
     return *this;
 }
-
 
 allocator_buddies_system::allocator_buddies_system(
     size_t space_size_power_of_two,
@@ -191,6 +239,7 @@ allocator_buddies_system::allocator_buddies_system(
     auto* meta = get_metadata(_trusted_memory);
     meta->logger_ptr = logger;
     meta->parent_allocator = parent;
+    meta->parent_trusted_memory = nullptr;
     meta->fit = allocate_fit_mode;
     meta->k = static_cast<unsigned char>(pool_k);
     meta->total_allocated_size = total_alloc_size;
@@ -219,7 +268,6 @@ allocator_buddies_system::allocator_buddies_system(
     }
 }
 
-
 void* allocator_buddies_system::do_allocate_sm(size_t size) {
     if (_trusted_memory == nullptr) {
         throw std::bad_alloc();
@@ -235,10 +283,9 @@ void* allocator_buddies_system::do_allocate_sm(size_t size) {
         meta->logger_ptr->log("do_allocate_sm called with size: " + std::to_string(size), logger::severity::debug);
     }
 
-    
     size_t adjusted_size = size + sizeof(void*);
     size_t k = __detail::nearest_greater_k_of_2(adjusted_size);
-    k = std::max(k, min_k); 
+    k = std::max(k, min_k);
     if (k > meta->k) {
         if (meta->logger_ptr) {
             meta->logger_ptr->log("Requested size too large", logger::severity::error);
@@ -252,7 +299,6 @@ void* allocator_buddies_system::do_allocate_sm(size_t size) {
                              ", min_k: " + std::to_string(min_k), logger::severity::debug);
     }
 
-    
     buddy_iterator best_block = end();
     size_t best_size = std::numeric_limits<size_t>::max();
 
@@ -272,13 +318,17 @@ void* allocator_buddies_system::do_allocate_sm(size_t size) {
             }
 
             size_t block_size = 1ULL << it.size();
-            void* block_end = static_cast<char*>(block_meta) + block_size;
+            // block_meta указывает на начало метаданных, block_ptr - на начало пользовательской области
+            // Конец блока должен учитывать размер метаданных
+            void* block_end = static_cast<char*>(block_ptr) + block_size - (sizeof(void*) + sizeof(unsigned char));
             void* pool_end = static_cast<char*>(get_pool_start(_trusted_memory)) + (1ULL << meta->k);
             if (block_end > pool_end) {
                 continue;
             }
 
-            if (it.occupied() || it.size() < k) continue;
+            if (it.occupied() || it.size() < k) {
+                continue;
+            }
 
             if (meta->fit == fit_mode::first_fit) {
                 best_block = it;
@@ -309,7 +359,6 @@ void* allocator_buddies_system::do_allocate_sm(size_t size) {
         throw std::bad_alloc();
     }
 
-    
     void* block = best_block_ptr;
     void* block_meta = get_block_metadata(block);
     if (block_meta == nullptr) {
@@ -342,11 +391,12 @@ void* allocator_buddies_system::do_allocate_sm(size_t size) {
     }
 
     set_block_occupied(block_meta, true);
-    
-    auto* block_ptr_storage = static_cast<char*>(block);
-    *reinterpret_cast<void**>(block_ptr_storage) = block;
-    
-    void* user_ptr = block_ptr_storage + sizeof(void*);
+    set_block_trusted_memory(block_meta, _trusted_memory);
+
+    auto* trusted_ptr_storage = static_cast<char*>(block);
+    *reinterpret_cast<void**>(trusted_ptr_storage) = _trusted_memory;
+
+    void* user_ptr = trusted_ptr_storage + sizeof(void*);
 
     if (meta->logger_ptr) {
         size_t available = 0;
@@ -371,7 +421,6 @@ void* allocator_buddies_system::do_allocate_sm(size_t size) {
     return user_ptr;
 }
 
-
 void allocator_buddies_system::do_deallocate_sm(void* at) {
     if (_trusted_memory == nullptr || at == nullptr) {
         throw std::invalid_argument("Invalid pointer for deallocation");
@@ -387,25 +436,27 @@ void allocator_buddies_system::do_deallocate_sm(void* at) {
         meta->logger_ptr->log("do_deallocate_sm called", logger::severity::debug);
     }
 
-    
-    void* block_ptr_storage = static_cast<char*>(at) - sizeof(void*);
-    void* block = *reinterpret_cast<void**>(block_ptr_storage);
+    auto* trusted_ptr_storage = static_cast<char*>(at) - sizeof(void*);
+    void* block_trusted_memory = *reinterpret_cast<void**>(trusted_ptr_storage);
+
+    if (block_trusted_memory != _trusted_memory) {
+        if (meta->logger_ptr) {
+            meta->logger_ptr->log("Block belongs to a different allocator instance", logger::severity::error);
+        }
+        throw std::invalid_argument("Block belongs to a different allocator instance");
+    }
+
+    void* block = static_cast<char*>(at) - sizeof(void*);
 
     if (block == nullptr) {
         throw std::invalid_argument("Invalid block pointer");
     }
 
-    void* pool_start = get_pool_start(_trusted_memory);
-    if (pool_start == nullptr) {
-        throw std::invalid_argument("Invalid pool start");
-    }
-
-    size_t total_size = 1ULL << meta->k;
-    if (block < pool_start || block >= static_cast<char*>(pool_start) + total_size) {
+    if (!is_pointer_in_pool(block, _trusted_memory)) {
         if (meta->logger_ptr) {
-            meta->logger_ptr->log("Invalid pointer for deallocation", logger::severity::error);
+            meta->logger_ptr->log("Pointer does not belong to this allocator's pool", logger::severity::error);
         }
-        throw std::invalid_argument("Pointer does not belong to this allocator");
+        throw std::invalid_argument("Pointer does not belong to this allocator's pool");
     }
 
     void* block_meta = get_block_metadata(block);
@@ -424,7 +475,7 @@ void allocator_buddies_system::do_deallocate_sm(void* at) {
     size_t current_k = get_block_size(block_meta);
     while (current_k < meta->k) {
         size_t block_size = 1ULL << current_k;
-        void* buddy = get_buddy(block, block_size, pool_start, total_size);
+        void* buddy = get_buddy(block, block_size, get_pool_start(_trusted_memory), 1ULL << meta->k);
         if (!buddy) break;
 
         void* buddy_meta = get_block_metadata(buddy);
@@ -459,8 +510,13 @@ void allocator_buddies_system::do_deallocate_sm(void* at) {
     }
 }
 
+bool allocator_buddies_system::do_is_equal(const std::pmr::memory_resource& other) const noexcept {
+    const auto* other_ptr = dynamic_cast<const allocator_buddies_system*>(&other);
+    return other_ptr && _trusted_memory == other_ptr->_trusted_memory;
+}
 
-allocator_buddies_system::allocator_buddies_system(const allocator_buddies_system& other) {
+allocator_buddies_system::allocator_buddies_system(const allocator_buddies_system& other)
+    : _trusted_memory(nullptr) {
     if (!other._trusted_memory) {
         _trusted_memory = nullptr;
         return;
@@ -485,8 +541,8 @@ allocator_buddies_system::allocator_buddies_system(const allocator_buddies_syste
 
     auto* meta = get_metadata(_trusted_memory);
     new (&meta->mutex) std::mutex();
+    meta->parent_trusted_memory = other._trusted_memory;
 }
-
 
 allocator_buddies_system& allocator_buddies_system::operator=(const allocator_buddies_system& other) {
     if (this == &other) {
@@ -532,7 +588,7 @@ allocator_buddies_system& allocator_buddies_system::operator=(const allocator_bu
         if (!_trusted_memory) {
             throw std::bad_alloc();
         }
-        
+
         std::copy_n(
             static_cast<const char*>(other._trusted_memory),
             total_alloc_size_to_copy,
@@ -541,19 +597,13 @@ allocator_buddies_system& allocator_buddies_system::operator=(const allocator_bu
 
         auto* new_meta = get_metadata(_trusted_memory);
         new (&new_meta->mutex) std::mutex();
+        new_meta->parent_trusted_memory = other._trusted_memory;
     } else {
         _trusted_memory = nullptr;
     }
 
     return *this;
 }
-
-
-bool allocator_buddies_system::do_is_equal(const std::pmr::memory_resource& other) const noexcept {
-    const auto* other_ptr = dynamic_cast<const allocator_buddies_system*>(&other);
-    return other_ptr && _trusted_memory == other_ptr->_trusted_memory;
-}
-
 
 inline void allocator_buddies_system::set_fit_mode(allocator_with_fit_mode::fit_mode mode) {
     auto* meta = get_metadata(_trusted_memory);
@@ -564,23 +614,19 @@ inline void allocator_buddies_system::set_fit_mode(allocator_with_fit_mode::fit_
     meta->fit = mode;
 }
 
+inline logger* allocator_buddies_system::get_logger() const {
+    return get_metadata(_trusted_memory)->logger_ptr;
+}
+
+inline std::string allocator_buddies_system::get_typename() const {
+    return "allocator_buddies_system";
+}
 
 std::vector<allocator_test_utils::block_info> allocator_buddies_system::get_blocks_info() const noexcept {
     auto* meta = get_metadata(_trusted_memory);
     std::lock_guard<std::mutex> lock(meta->mutex);
     return get_blocks_info_inner();
 }
-
-
-inline logger* allocator_buddies_system::get_logger() const {
-    return get_metadata(_trusted_memory)->logger_ptr;
-}
-
-
-inline std::string allocator_buddies_system::get_typename() const {
-    return "allocator_buddies_system";
-}
-
 
 std::vector<allocator_test_utils::block_info> allocator_buddies_system::get_blocks_info_inner() const {
     std::vector<allocator_test_utils::block_info> blocks;
@@ -697,6 +743,29 @@ std::vector<allocator_test_utils::block_info> allocator_buddies_system::get_bloc
     return blocks;
 }
 
+allocator_buddies_system::buddy_iterator allocator_buddies_system::begin() const noexcept {
+    if (_trusted_memory == nullptr) {
+        return buddy_iterator(nullptr);
+    }
+    void* pool_start = get_pool_start(_trusted_memory);
+    if (pool_start == nullptr) {
+        return buddy_iterator(nullptr);
+    }
+    return buddy_iterator(static_cast<char*>(pool_start) + sizeof(unsigned char));
+}
+
+allocator_buddies_system::buddy_iterator allocator_buddies_system::end() const noexcept {
+    if (_trusted_memory == nullptr) {
+        return buddy_iterator(nullptr);
+    }
+    auto* meta = get_metadata(_trusted_memory);
+    if (meta == nullptr) {
+        return buddy_iterator(nullptr);
+    }
+    void* pool_start = get_pool_start(_trusted_memory);
+    void* pool_end_address = static_cast<char*>(pool_start) + (1ULL << meta->k);
+    return buddy_iterator(pool_end_address);
+}
 
 allocator_buddies_system::buddy_iterator::buddy_iterator() : _block(nullptr) {}
 
@@ -731,10 +800,16 @@ allocator_buddies_system::buddy_iterator& allocator_buddies_system::buddy_iterat
     void* next_block = static_cast<char*>(current_block) + block_size;
     _block = static_cast<char*>(next_block) + sizeof(unsigned char);
 
+    // Проверяем, что block_meta не nullptr перед вызовом get_block_trusted_memory
+    void* trusted_memory = get_block_trusted_memory(block_meta);
+    if (trusted_memory == nullptr || !is_pointer_in_pool(_block, trusted_memory)) {
+        _block = nullptr;
+    }
+
     return *this;
 }
 
-allocator_buddies_system::buddy_iterator allocator_buddies_system::buddy_iterator::operator++(int) {
+allocator_buddies_system::buddy_iterator allocator_buddies_system::buddy_iterator::operator++(int n) {
     buddy_iterator temp = *this;
     ++(*this);
     return temp;
@@ -751,7 +826,11 @@ size_t allocator_buddies_system::buddy_iterator::size() const noexcept {
     }
 
     try {
-        return get_block_size(block_meta);
+        size_t block_k = get_block_size(block_meta);
+        if (block_k < min_k) {
+            return 0;
+        }
+        return block_k;
     } catch (...) {
         return 0;
     }
@@ -776,28 +855,4 @@ bool allocator_buddies_system::buddy_iterator::occupied() const noexcept {
 
 void* allocator_buddies_system::buddy_iterator::operator*() const noexcept {
     return _block;
-}
-
-allocator_buddies_system::buddy_iterator allocator_buddies_system::begin() const noexcept {
-    if (_trusted_memory == nullptr) {
-        return buddy_iterator(nullptr);
-    }
-    void* pool_start = get_pool_start(_trusted_memory);
-    if (pool_start == nullptr) {
-        return buddy_iterator(nullptr);
-    }
-    return buddy_iterator(static_cast<char*>(pool_start) + sizeof(unsigned char));
-}
-
-allocator_buddies_system::buddy_iterator allocator_buddies_system::end() const noexcept {
-    if (_trusted_memory == nullptr) {
-        return buddy_iterator(nullptr);
-    }
-    auto* meta = get_metadata(_trusted_memory);
-    if (meta == nullptr) {
-        return buddy_iterator(nullptr);
-    }
-    void* pool_start = get_pool_start(_trusted_memory);
-    void* pool_end_address = static_cast<char*>(pool_start) + (1ULL << meta->k);
-    return buddy_iterator(static_cast<char*>(pool_end_address) + sizeof(unsigned char));
 }

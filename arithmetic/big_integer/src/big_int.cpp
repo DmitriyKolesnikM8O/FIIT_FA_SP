@@ -28,16 +28,16 @@ namespace
 big_int::multiplication_rule big_int::decide_mult(size_t rhs) const noexcept
 { 
 
-    return multiplication_rule::Karatsuba;
+    // return multiplication_rule::Karatsuba;
      
-    /*
+
     const size_t threshold = 64;
-    
+
     if (_digits.size() > threshold || rhs > threshold) {
         return multiplication_rule::Karatsuba;
     }
     return multiplication_rule::trivial;
-    */
+
 }
 
 big_int::division_rule big_int::decide_div(size_t) const noexcept
