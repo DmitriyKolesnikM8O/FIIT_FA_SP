@@ -1,11 +1,13 @@
 - client logger (+)
 - server logger (+)
 - big integer (+)
-- global heap allocator (+)
 - trivial multiplication (+)
 - Karatsuba multiplication (+)
 - trivial division (+)
-- buddies system allocator (small bug in deallocate)
+- global heap allocator (+)
+- buddies system allocator 
+- boundary system allocator
+- BST (FAIL 1 test)
 
 
 Summary: 10 of 17

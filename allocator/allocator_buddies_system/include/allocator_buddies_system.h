@@ -46,6 +46,7 @@ private:
     {
         bool occupied : 1;
         unsigned char size : 7;
+        uint32_t allocator_id : 24;
     };
 
     void *_trusted_memory;

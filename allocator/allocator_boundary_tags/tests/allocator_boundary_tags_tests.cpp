@@ -83,7 +83,7 @@ TEST(positiveTests, test2)
     auto actual_blocks_state = dynamic_cast<allocator_test_utils *>(allocator_instance.get())->get_blocks_info();
     std::vector<allocator_test_utils::block_info> expected_blocks_state
         {
-            { .block_size = 999 + sizeof(allocator_dbg_helper::block_size_t) + sizeof(allocator_dbg_helper::block_pointer_t) * 3, .is_block_occupied = true },
+            { .block_size = 1000 + sizeof(allocator_dbg_helper::block_size_t) + sizeof(allocator_dbg_helper::block_pointer_t) * 3, .is_block_occupied = true },
             { .block_size = sizeof(allocator_dbg_helper::block_size_t) + sizeof(allocator_dbg_helper::block_pointer_t) * 3, .is_block_occupied = true },
             { .block_size = 3000 - (1000 + (sizeof(allocator_dbg_helper::block_size_t) + sizeof(allocator_dbg_helper::block_pointer_t) * 3) * 2), .is_block_occupied = false }
         };
