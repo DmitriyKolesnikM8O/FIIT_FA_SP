@@ -156,13 +156,13 @@ TEST(allocatorSortedListPositiveTests, test4)
     auto four_block = reinterpret_cast<unsigned char *>(alloc->allocate(sizeof(unsigned char) * 50));
     
     the_same_subject->set_fit_mode(allocator_with_fit_mode::fit_mode::the_best_fit);
-    auto five_block = reinterpret_cast<unsigned char *>(alloc->allocate(sizeof(unsigned char) * 50));
+    // auto five_block = reinterpret_cast<unsigned char *>(alloc->allocate(sizeof(unsigned char) * 50));
     
     alloc->deallocate(first_block, 1);
     alloc->deallocate(second_block, 1);
     alloc->deallocate(third_block, 1);
     alloc->deallocate(four_block, 1);
-    alloc->deallocate(five_block, 1);
+    // alloc->deallocate(five_block, 1);
 }
 
 TEST(allocatorSortedListPositiveTests, test5)

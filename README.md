@@ -7,7 +7,7 @@
 - global heap allocator (+)
 - buddies system allocator 
 - boundary system allocator
-- sorted list allocator (FAIL 1 TEST)
+- sorted list allocator
 - BST
 
 

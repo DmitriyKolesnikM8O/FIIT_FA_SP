@@ -172,22 +172,21 @@ void *allocator_sorted_list::do_allocate_sm(size_t size)
             logger::severity::debug);
     }
 
-    
+
     auto memory_ptr = static_cast<char*>(_trusted_memory);
-    memory_ptr += sizeof(logger*) + sizeof(std::pmr::memory_resource*) + sizeof(fit_mode) + sizeof(size_t);
+    memory_ptr += sizeof(void*) + sizeof(std::pmr::memory_resource*) + sizeof(fit_mode) + sizeof(size_t);
     std::mutex* mutex_ptr = reinterpret_cast<std::mutex*>(memory_ptr);
 
-    
+
     std::lock_guard<std::mutex> lock(*mutex_ptr);
 
-    
+
     fit_mode mode = *reinterpret_cast<fit_mode*>(
-    static_cast<char*>(_trusted_memory) + sizeof(logger*) + sizeof(std::pmr::memory_resource*));
+        static_cast<char*>(_trusted_memory) + sizeof(void*) + sizeof(std::pmr::memory_resource*));
     void* selected_block = nullptr;
-    void* prev_block = nullptr;
     size_t adjusted_size = size;
 
-    
+
     if (adjusted_size % alignof(std::max_align_t) != 0)
     {
         adjusted_size = (adjusted_size / alignof(std::max_align_t) + 1) * alignof(std::max_align_t);
@@ -198,17 +197,25 @@ void *allocator_sorted_list::do_allocate_sm(size_t size)
         }
     }
 
-    
+
+    bool use_exact_block = false;
+
+
     switch (mode)
     {
         case fit_mode::first_fit:
         {
-    
+
             for (auto it = free_begin(); it != free_end(); ++it)
             {
                 if (it.size() >= adjusted_size)
                 {
                     selected_block = *it;
+
+
+                    if (it.size() <= adjusted_size + block_metadata_size + 8)
+                        use_exact_block = true;
+
                     break;
                 }
             }
@@ -216,16 +223,20 @@ void *allocator_sorted_list::do_allocate_sm(size_t size)
         }
         case fit_mode::the_best_fit:
         {
-    
+
             size_t min_size_diff = SIZE_MAX;
             for (auto it = free_begin(); it != free_end(); ++it)
             {
-                if (it.size() >= adjusted_size && it.size() - adjusted_size < min_size_diff)
+                if (it.size() >= adjusted_size && (it.size() - adjusted_size < min_size_diff))
                 {
                     min_size_diff = it.size() - adjusted_size;
                     selected_block = *it;
 
-    
+
+                    if (it.size() <= adjusted_size + block_metadata_size + 8)
+                        use_exact_block = true;
+
+
                     if (min_size_diff == 0)
                         break;
                 }
@@ -234,7 +245,7 @@ void *allocator_sorted_list::do_allocate_sm(size_t size)
         }
         case fit_mode::the_worst_fit:
         {
-    
+
             size_t max_size = 0;
             for (auto it = free_begin(); it != free_end(); ++it)
             {
@@ -242,13 +253,17 @@ void *allocator_sorted_list::do_allocate_sm(size_t size)
                 {
                     max_size = it.size();
                     selected_block = *it;
+
+
+                    if (it.size() <= adjusted_size + block_metadata_size + 8)
+                        use_exact_block = true;
                 }
             }
             break;
         }
     }
 
-    
+
     if (!selected_block)
     {
         if (logger_ptr)
@@ -259,30 +274,64 @@ void *allocator_sorted_list::do_allocate_sm(size_t size)
         throw std::bad_alloc();
     }
 
-    
+
     void* next_free = *reinterpret_cast<void**>(selected_block);
     size_t block_size = *reinterpret_cast<size_t*>(static_cast<char*>(selected_block) + sizeof(void*));
 
-    
+
     void* user_data = static_cast<char*>(selected_block) + block_metadata_size;
 
-    
-    if (block_size >= adjusted_size + block_metadata_size + 1)
+
+    if (use_exact_block || block_size < adjusted_size + block_metadata_size + 8)
     {
-    
+        if (logger_ptr)
+        {
+            logger_ptr->log("Using entire block of size " + std::to_string(block_size) +
+                            " for allocation of " + std::to_string(adjusted_size) + " bytes",
+                            logger::severity::information);
+        }
+
+
+        memory_ptr += sizeof(std::mutex);
+        void** free_list_head = reinterpret_cast<void**>(memory_ptr);
+
+        if (*free_list_head == selected_block)
+        {
+            *free_list_head = next_free;
+        }
+        else
+        {
+
+            void* prev = nullptr;
+            void* curr = *free_list_head;
+            while (curr && curr != selected_block)
+            {
+                prev = curr;
+                curr = *reinterpret_cast<void**>(curr);
+            }
+
+            if (prev)
+            {
+                *reinterpret_cast<void**>(prev) = next_free;
+            }
+        }
+    }
+    else
+    {
+
         void* new_free_block = static_cast<char*>(selected_block) + block_metadata_size + adjusted_size;
 
-    
+
         *reinterpret_cast<void**>(new_free_block) = next_free;
 
-    
+
         *reinterpret_cast<size_t*>(static_cast<char*>(new_free_block) + sizeof(void*)) =
             block_size - adjusted_size - block_metadata_size;
 
-    
+
         *reinterpret_cast<size_t*>(static_cast<char*>(selected_block) + sizeof(void*)) = adjusted_size;
 
-    
+
         memory_ptr += sizeof(std::mutex);
         void** free_list_head = reinterpret_cast<void**>(memory_ptr);
 
@@ -307,31 +356,8 @@ void *allocator_sorted_list::do_allocate_sm(size_t size)
             }
         }
     }
-    else
-    {
-        
-        memory_ptr += sizeof(std::mutex);
-        void** free_list_head = reinterpret_cast<void**>(memory_ptr);
 
-        if (*free_list_head == selected_block)
-        {
-            *free_list_head = next_free;
-        }
-        else
-        {
-            
-            for (auto it = free_begin(); it != free_end(); ++it)
-            {
-                if (*reinterpret_cast<void**>(*it) == selected_block)
-                {
-                    *reinterpret_cast<void**>(*it) = next_free;
-                    break;
-                }
-            }
-        }
-    }
 
-    
     *reinterpret_cast<void**>(selected_block) = nullptr;
 
 
@@ -346,7 +372,7 @@ void *allocator_sorted_list::do_allocate_sm(size_t size)
         logger_ptr->log("Available memory after allocation: " + std::to_string(available_memory),
             logger::severity::information);
 
-        
+        // Состояние памяти
         std::stringstream state;
         for (auto it = begin(); it != end(); ++it)
         {
@@ -377,18 +403,18 @@ void allocator_sorted_list::do_deallocate_sm(void *at)
         return;
     }
 
-    
+
     auto memory_ptr = static_cast<char*>(_trusted_memory);
     memory_ptr += sizeof(logger*) + sizeof(std::pmr::memory_resource*) + sizeof(fit_mode) + sizeof(size_t);
     std::mutex* mutex_ptr = reinterpret_cast<std::mutex*>(memory_ptr);
 
-    
+
     std::lock_guard<std::mutex> lock(*mutex_ptr);
 
-    
+
     void* block_ptr = static_cast<char*>(at) - block_metadata_size;
 
-    
+
     char* mem_start = static_cast<char*>(_trusted_memory) + allocator_metadata_size;
     memory_ptr += sizeof(std::mutex);
     size_t space_size = *reinterpret_cast<size_t*>(static_cast<char*>(_trusted_memory) +
@@ -406,72 +432,72 @@ void allocator_sorted_list::do_deallocate_sm(void *at)
         throw std::invalid_argument("Memory block does not belong to this allocator");
     }
 
-    
+
     size_t block_size = *reinterpret_cast<size_t*>(static_cast<char*>(block_ptr) + sizeof(void*));
 
-    
+
     void** free_list_head = reinterpret_cast<void**>(memory_ptr);
 
-    
+
     void* prev_free = nullptr;
     void* curr_free = *free_list_head;
 
-    
+
     while (curr_free && curr_free < block_ptr)
     {
         prev_free = curr_free;
         curr_free = *reinterpret_cast<void**>(curr_free);
     }
 
-    
+
     if (prev_free)
     {
-    
+
         *reinterpret_cast<void**>(block_ptr) = *reinterpret_cast<void**>(prev_free);
         *reinterpret_cast<void**>(prev_free) = block_ptr;
     }
     else
     {
-    
+
         *reinterpret_cast<void**>(block_ptr) = *free_list_head;
         *free_list_head = block_ptr;
     }
 
-    
-    
+
+
     if (prev_free &&
         static_cast<char*>(prev_free) + block_metadata_size +
         *reinterpret_cast<size_t*>(static_cast<char*>(prev_free) + sizeof(void*)) == block_ptr)
     {
-    
+
         *reinterpret_cast<size_t*>(static_cast<char*>(prev_free) + sizeof(void*)) +=
             block_metadata_size + block_size;
 
-        
+
         *reinterpret_cast<void**>(prev_free) = *reinterpret_cast<void**>(block_ptr);
 
-        
+
         block_ptr = prev_free;
         block_size = *reinterpret_cast<size_t*>(static_cast<char*>(block_ptr) + sizeof(void*));
     }
 
-    
+
     void* next_free = *reinterpret_cast<void**>(block_ptr);
     if (next_free &&
         static_cast<char*>(block_ptr) + block_metadata_size + block_size == next_free)
     {
-        
+
         *reinterpret_cast<size_t*>(static_cast<char*>(block_ptr) + sizeof(void*)) +=
             block_metadata_size + *reinterpret_cast<size_t*>(static_cast<char*>(next_free) + sizeof(void*));
 
-        
+
         *reinterpret_cast<void**>(block_ptr) = *reinterpret_cast<void**>(next_free);
     }
 
-    
+
     if (logger_ptr)
     {
-        
+
         size_t available_memory = 0;
         for (auto it = free_begin(); it != free_end(); ++it)
         {
@@ -480,7 +506,7 @@ void allocator_sorted_list::do_deallocate_sm(void *at)
         logger_ptr->log("Available memory after deallocation: " + std::to_string(available_memory),
             logger::severity::information);
 
-        
+
         std::stringstream state;
         for (auto it = begin(); it != end(); ++it)
         {
@@ -760,7 +786,15 @@ bool allocator_sorted_list::sorted_iterator::occupied() const noexcept
 
 
     auto memory_ptr = static_cast<char*>(_trusted_memory);
-    memory_ptr += sizeof(logger*) + sizeof(std::pmr::memory_resource*) +
+    memory_ptr += sizeof(void*) + sizeof(std::pmr::memory_resource*) + sizeof(fit_mode);
+    auto space_size = *reinterpret_cast<size_t*>(memory_ptr);
+
+    if (_current_ptr >= static_cast<char*>(_trusted_memory) + space_size)
+        return false;
+
+
+    memory_ptr = static_cast<char*>(_trusted_memory);
+    memory_ptr += sizeof(void*) + sizeof(std::pmr::memory_resource*) +
                  sizeof(allocator_with_fit_mode::fit_mode) + sizeof(size_t) + sizeof(std::mutex);
     void* free_list_head = *reinterpret_cast<void**>(memory_ptr);
 
@@ -774,5 +808,5 @@ bool allocator_sorted_list::sorted_iterator::occupied() const noexcept
         free_block = *reinterpret_cast<void**>(free_block);
     }
 
-    return true; 
+    return true;
 }
