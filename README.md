@@ -7,7 +7,8 @@
 - global heap allocator (+)
 - buddies system allocator 
 - boundary system allocator
-- BST (FAIL 1 test)
+- sorted list allocator (SUCCESS 1 TEST)
+- BST
 
 
 Summary: 10 of 17
