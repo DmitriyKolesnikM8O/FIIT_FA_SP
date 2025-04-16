@@ -23,7 +23,7 @@ allocator_sorted_list::allocator_sorted_list(
     
     auto memory_ptr = static_cast<char*>(_trusted_memory);
     *reinterpret_cast<class logger**>(memory_ptr) = logger;
-    memory_ptr += sizeof(logger);
+    memory_ptr += sizeof(void*);
 
     
     *reinterpret_cast<std::pmr::memory_resource**>(memory_ptr) = parent_allocator;
@@ -292,14 +292,18 @@ void *allocator_sorted_list::do_allocate_sm(size_t size)
         }
         else
         {
-            
-            for (auto it = free_begin(); it != free_end(); ++it)
+
+            void* prev = nullptr;
+            void* curr = *free_list_head;
+            while (curr && curr != selected_block)
             {
-                if (*reinterpret_cast<void**>(*it) == selected_block)
-                {
-                    *reinterpret_cast<void**>(*it) = new_free_block;
-                    break;
-                }
+                prev = curr;
+                curr = *reinterpret_cast<void**>(curr);
+            }
+
+            if (prev)
+            {
+                *reinterpret_cast<void**>(prev) = new_free_block;
             }
         }
     }
@@ -679,19 +683,23 @@ bool allocator_sorted_list::sorted_iterator::operator!=(const allocator_sorted_l
 
 allocator_sorted_list::sorted_iterator &allocator_sorted_list::sorted_iterator::operator++() & noexcept
 {
-    if (_current_ptr)
+    if (_current_ptr && _trusted_memory)
     {
-        
+
         size_t block_size = *reinterpret_cast<size_t*>(static_cast<char*>(_current_ptr) + sizeof(void*));
+
+
         _current_ptr = static_cast<char*>(_current_ptr) + block_metadata_size + block_size;
 
-        
-        char* mem_start = static_cast<char*>(_trusted_memory);
-        size_t mem_size = *reinterpret_cast<size_t*>(mem_start + sizeof(logger*) + sizeof(std::pmr::memory_resource*) + sizeof(allocator_with_fit_mode::fit_mode));
 
-        if (_current_ptr >= static_cast<char*>(mem_start) + mem_size)
+        auto memory_ptr = static_cast<char*>(_trusted_memory);
+        memory_ptr += sizeof(logger*) + sizeof(std::pmr::memory_resource*) + sizeof(fit_mode);
+        size_t space_size = *reinterpret_cast<size_t*>(memory_ptr);
+
+        if (_current_ptr >= static_cast<char*>(_trusted_memory) + space_size)
         {
-            _current_ptr = static_cast<char*>(mem_start) + mem_size; 
+
+            _current_ptr = static_cast<char*>(_trusted_memory) + space_size;
         }
     }
     return *this;
@@ -725,32 +733,46 @@ allocator_sorted_list::sorted_iterator::sorted_iterator()
 }
 
 allocator_sorted_list::sorted_iterator::sorted_iterator(void *trusted)
-    : _current_ptr(trusted), _trusted_memory(trusted)
 {
-    
-    
-    auto memory_ptr = static_cast<char*>(_trusted_memory);
-    memory_ptr += sizeof(logger*) + sizeof(std::pmr::memory_resource*) + sizeof(allocator_with_fit_mode::fit_mode) + sizeof(size_t) + sizeof(std::mutex);
-    _free_ptr = *reinterpret_cast<void**>(memory_ptr);
+    _current_ptr = trusted;
+
+    if (trusted)
+    {
+        _trusted_memory = static_cast<char*>(trusted) - allocator_metadata_size;
+
+
+        auto memory_ptr = static_cast<char*>(_trusted_memory);
+        memory_ptr += sizeof(logger*) + sizeof(std::pmr::memory_resource*) +
+                     sizeof(allocator_with_fit_mode::fit_mode) + sizeof(size_t) + sizeof(std::mutex);
+        _free_ptr = *reinterpret_cast<void**>(memory_ptr);
+    }
+    else
+    {
+        _trusted_memory = nullptr;
+        _free_ptr = nullptr;
+    }
 }
 
 bool allocator_sorted_list::sorted_iterator::occupied() const noexcept
 {
-    if (!_current_ptr)
+    if (!_current_ptr || !_trusted_memory)
         return false;
 
-    
-    
 
-    
-    void* free_block = _free_ptr;
+    auto memory_ptr = static_cast<char*>(_trusted_memory);
+    memory_ptr += sizeof(logger*) + sizeof(std::pmr::memory_resource*) +
+                 sizeof(allocator_with_fit_mode::fit_mode) + sizeof(size_t) + sizeof(std::mutex);
+    void* free_list_head = *reinterpret_cast<void**>(memory_ptr);
+
+
+    void* free_block = free_list_head;
     while (free_block)
     {
         if (free_block == _current_ptr)
-            return false; 
+            return false;
 
         free_block = *reinterpret_cast<void**>(free_block);
     }
 
-    return true;
+    return true; 
 }
