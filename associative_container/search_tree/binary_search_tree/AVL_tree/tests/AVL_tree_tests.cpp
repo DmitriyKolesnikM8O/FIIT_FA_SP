@@ -70,6 +70,7 @@ bool infix_iterator_test(
         AVL_tree<tkey, tvalue> const &tree,
         std::vector<test_data<tkey, tvalue>> &expected_result)
 {
+
     auto end_infix = tree.cend_infix();
     auto it = tree.cbegin_infix();
 
@@ -78,6 +79,14 @@ bool infix_iterator_test(
     for (; vec_begin != vec_end; ++vec_begin)
     {
         auto& item = *vec_begin;
+        // std::cout << "Comparing values: it.depth()=" << it.depth()
+        //   << ", item.depth=" << item.depth
+        //   << ", it->first=" << it->first
+        //   << ", item.key=" << item.key
+        //   << ", it->second=" << it->second
+        //   << ", item.value=" << item.value
+        //   << ", it.get_height()=" << it.get_height()
+        //   << ", item.height=" << item.height << std::endl;
         if (it.depth() != item.depth || it->first != item.key || it->second != item.value || it.get_height() != item.height)
         {
             return false;

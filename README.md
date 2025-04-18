@@ -9,6 +9,7 @@
 - boundary system allocator
 - sorted list allocator
 - BST
+- AVL
 
 
 Summary: 10 of 17

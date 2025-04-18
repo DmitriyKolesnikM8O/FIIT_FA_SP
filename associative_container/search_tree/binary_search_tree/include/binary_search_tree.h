@@ -14,7 +14,6 @@
 #include <pp_allocator.h>
 #include <concepts>
 
-
 namespace __detail
 {
     template<typename tkey, typename tvalue, typename compare, typename tag>
@@ -30,7 +29,6 @@ class binary_search_tree : private compare
 public:
 
     using value_type = std::pair<const tkey, tvalue>;
-
 
     friend class __detail::bst_impl<tkey, tvalue, compare, tag>;
 
@@ -79,26 +77,11 @@ public:
     class postfix_reverse_iterator;
     class postfix_const_reverse_iterator;
 
-    /** @brief Watch about behavior of reverse iterators.
-     *
-     * @example Arrow is common iterator
-     *  1 2 3 -> 4 5 6 7
-     *  *it == 4.
-     *
-     *  @example But reverse:
-     *  1 2 3 \<- 4 5 6 7
-     *  *rit == 3
-     */
-
     class prefix_iterator
     {
     protected:
 
         node* _data;
-
-        /** If iterator == end or before_begin _data points to nullptr, _backup to last node
-         *
-         */
         node* _backup;
 
     public:
@@ -127,13 +110,8 @@ public:
 
         prefix_iterator const operator--(int not_used) const noexcept;
 
-        /** Throws exception if end
-         */
         reference operator*();
 
-        /** UB if iterator points to end
-         *
-         */
 
         pointer operator->() noexcept;
         size_t depth() const noexcept;
@@ -174,13 +152,8 @@ public:
 
         prefix_const_iterator const operator--(int not_used) const noexcept;
 
-        /** Throws exception if end
-         */
         reference operator*();
 
-        /** UB if iterator points to end
-         *
-         */
 
         pointer operator->() noexcept;
         size_t depth() const noexcept;
@@ -222,13 +195,8 @@ public:
 
         prefix_reverse_iterator const operator--(int not_used) const noexcept;
 
-        /** Throws exception if end
-         */
         reference operator*();
 
-        /** UB if iterator points to end
-         *
-         */
 
         pointer operator->() noexcept;
         size_t depth() const noexcept;
@@ -270,13 +238,7 @@ public:
 
         prefix_const_reverse_iterator const operator--(int not_used) const noexcept;
 
-        /** Throws exception if end
-         */
         reference operator*();
-
-        /** UB if iterator points to end
-         *
-         */
 
         pointer operator->() noexcept;
         size_t depth() const noexcept;
@@ -286,15 +248,14 @@ public:
 
     class infix_iterator
     {
-        friend binary_search_tree<tkey, tvalue, compare>;
+        friend class binary_search_tree;
+        friend class __detail::bst_impl<tkey, tvalue, compare, tag>;
     protected:
 
         node* _data;
 
-        /** If iterator == end or before_begin _data points to nullptr, _backup to last node
-         *
-         */
         node* _backup;
+
 
     public:
 
@@ -322,13 +283,7 @@ public:
 
         infix_iterator const operator--(int not_used) const noexcept;
 
-        /** Throws exception if end
-         */
         reference operator*();
-
-        /** UB if iterator points to end
-         *
-         */
 
         pointer operator->() noexcept;
         size_t depth() const noexcept;
@@ -369,13 +324,8 @@ public:
 
         infix_const_iterator const operator--(int not_used) const noexcept;
 
-        /** Throws exception if end
-         */
         reference operator*();
 
-        /** UB if iterator points to end
-         *
-         */
 
         pointer operator->() noexcept;
         size_t depth() const noexcept;
@@ -417,13 +367,8 @@ public:
 
         infix_reverse_iterator const operator--(int not_used) const noexcept;
 
-        /** Throws exception if end
-         */
         reference operator*();
 
-        /** UB if iterator points to end
-         *
-         */
 
         pointer operator->() noexcept;
         size_t depth() const noexcept;
@@ -465,13 +410,8 @@ public:
 
         infix_const_reverse_iterator const operator--(int not_used) const noexcept;
 
-        /** Throws exception if end
-         */
         reference operator*();
 
-        /** UB if iterator points to end
-         *
-         */
 
         pointer operator->() noexcept;
         size_t depth() const noexcept;
@@ -485,9 +425,6 @@ public:
 
         node* _data;
 
-        /** If iterator == end or before_begin _data points to nullptr, _backup to last node
-         *
-         */
         node* _backup;
 
     public:
@@ -516,13 +453,8 @@ public:
 
         postfix_iterator const operator--(int not_used) const noexcept;
 
-        /** Throws exception if end
-         */
         reference operator*();
 
-        /** UB if iterator points to end
-         *
-         */
 
         pointer operator->() noexcept;
         size_t depth() const noexcept;
@@ -563,13 +495,8 @@ public:
 
         postfix_const_iterator const operator--(int not_used) const noexcept;
 
-        /** Throws exception if end
-         */
         reference operator*();
 
-        /** UB if iterator points to end
-         *
-         */
 
         pointer operator->() noexcept;
         size_t depth() const noexcept;
@@ -611,13 +538,8 @@ public:
 
         postfix_reverse_iterator const operator--(int not_used) const noexcept;
 
-        /** Throws exception if end
-         */
         reference operator*();
 
-        /** UB if iterator points to end
-         *
-         */
 
         pointer operator->() noexcept;
         size_t depth() const noexcept;
@@ -659,13 +581,8 @@ public:
 
         postfix_const_reverse_iterator const operator--(int not_used) const noexcept;
 
-        /** Throws exception if end
-         */
         reference operator*();
 
-        /** UB if iterator points to end
-         *
-         */
 
         pointer operator->() noexcept;
         size_t depth() const noexcept;
@@ -689,7 +606,6 @@ public:
     friend class infix_reverse_iterator;
     friend class infix_const_reverse_iterator;
 
-    // endregion iterators definition
 
 
 protected:
@@ -698,8 +614,6 @@ protected:
     logger* _logger;
     size_t _size;
 
-    /** You should use coercion ctor or template methods of allocator
-     */
     pp_allocator<value_type> _allocator;
 
 public:
@@ -803,8 +717,6 @@ public:
 
 public:
 
-    // region iterators requests definition
-
     infix_iterator begin() noexcept;
 
     infix_iterator end() noexcept;
@@ -904,13 +816,7 @@ public:
 
     postfix_const_reverse_iterator crend_postfix() const noexcept;
 
-    // endregion iterators requests definition
-
 protected:
-
-
-
-    // region subtree rotations definition
 
     static void small_left_rotation(node *&subtree_root) noexcept;
 
@@ -924,8 +830,6 @@ protected:
 
     static void double_right_rotation(node *&subtree_root) noexcept;
 
-    // endregion subtree rotations definition
-
 };
 
 namespace __detail
@@ -937,16 +841,12 @@ namespace __detail
         template<class ...Args>
         static binary_search_tree<tkey, tvalue, compare, tag>::node* create_node(binary_search_tree<tkey, tvalue, compare, tag>& cont, Args&& ...args);
 
-        // Only calls destructor and frees memory
         static void delete_node(binary_search_tree<tkey, tvalue, compare, tag>& cont, binary_search_tree<tkey, tvalue, compare, tag>::node** node);
 
-        //Does not invalidate node*, needed for splay tree
         static void post_search(binary_search_tree<tkey, tvalue, compare, tag>::node**){}
 
-        //Does not invalidate node*
         static void post_insert(binary_search_tree<tkey, tvalue, compare, tag>& cont, binary_search_tree<tkey, tvalue, compare, tag>::node**){}
 
-        // Removes this node from tree and deletes it
         static void erase(binary_search_tree<tkey, tvalue, compare, tag>& cont, binary_search_tree<tkey, tvalue, compare, tag>::node**);
 
         static void swap(binary_search_tree<tkey, tvalue, compare, tag>& lhs, binary_search_tree<tkey, tvalue, compare, tag>& rhs) noexcept;
@@ -1004,18 +904,11 @@ binary_search_tree(std::initializer_list<std::pair<tkey, tvalue>> data, const co
         pp_allocator<U> alloc = pp_allocator<U>(),
         logger* logger = nullptr) -> binary_search_tree<tkey, tvalue, compare>;
 
-
-// region node implementation
-
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 template<class ...Args>
 binary_search_tree<tkey, tvalue, compare, tag>::node::node(node* parent, Args&& ...args) : data(std::forward<Args>(args)...), parent(parent), left_subtree(nullptr), right_subtree(nullptr)
 {
 }
-
-// endregion node implementation
-
-// region prefix_iterator implementation
 
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 binary_search_tree<tkey, tvalue, compare, tag>::prefix_iterator::prefix_iterator(node* data, node* backup) : _data(data), _backup(backup)
@@ -1164,9 +1057,6 @@ size_t binary_search_tree<tkey, tvalue, compare, tag>::prefix_iterator::depth() 
     return depth;
 }
 
-// endregion prefix_iterator implementation
-
-// region prefix_const_iterator implementation
 
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 binary_search_tree<tkey, tvalue, compare, tag>::prefix_const_iterator::prefix_const_iterator(const node* data, const node* backup) : _base(const_cast<node*>(data), const_cast<node*>(backup))
@@ -1245,10 +1135,6 @@ size_t binary_search_tree<tkey, tvalue, compare, tag>::prefix_const_iterator::de
 {
     return _base.depth();
 }
-
-// endregion prefix_const_iterator implementation
-
-// region prefix_reverse_iterator implementation
 
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 binary_search_tree<tkey, tvalue, compare, tag>::prefix_reverse_iterator::prefix_reverse_iterator(node* data, node* backup) : _base(data, backup)
@@ -1343,10 +1229,6 @@ size_t binary_search_tree<tkey, tvalue, compare, tag>::prefix_reverse_iterator::
     return _base.depth();
 }
 
-// endregion prefix_reverse_iterator implementation
-
-// region prefix_const_reverse_iterator implementation
-
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 binary_search_tree<tkey, tvalue, compare, tag>::prefix_const_reverse_iterator::prefix_const_reverse_iterator(const node* data, const node* backup) : _base(data, backup)
 {
@@ -1439,9 +1321,6 @@ size_t binary_search_tree<tkey, tvalue, compare, tag>::prefix_const_reverse_iter
     return _base.depth();
 }
 
-// endregion prefix_const_reverse_iterator implementation
-
-// region infix_iterator implementation
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 binary_search_tree<tkey, tvalue, compare, tag>::infix_iterator::infix_iterator(node* data, node* backup) : _data(data), _backup(backup)
 {
@@ -1456,7 +1335,7 @@ bool binary_search_tree<tkey, tvalue, compare, tag>::infix_iterator::operator==(
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 bool binary_search_tree<tkey, tvalue, compare, tag>::infix_iterator::operator!=(infix_iterator const &other) const noexcept
 {
-    return _data != &other._data;
+    return _data != other._data;
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
@@ -1574,10 +1453,6 @@ size_t binary_search_tree<tkey, tvalue, compare, tag>::infix_iterator::depth() c
     return depth;
 }
 
-// endregion infix_iterator implementation
-
-// region infix_const_iterator implementation
-
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 binary_search_tree<tkey, tvalue, compare, tag>::infix_const_iterator::infix_const_iterator(const node* data, const node* backup) : _base(const_cast<node*>(data), const_cast<node*>(backup))
 {
@@ -1654,9 +1529,6 @@ size_t binary_search_tree<tkey, tvalue, compare, tag>::infix_const_iterator::dep
     return _base.depth();
 }
 
-// endregion infix_const_iterator implementation
-
-// region infix_reverse_iterator implementation
 
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 binary_search_tree<tkey, tvalue, compare, tag>::infix_reverse_iterator::infix_reverse_iterator(node* data, node* backup) : _base(data, backup)
@@ -1750,9 +1622,6 @@ size_t binary_search_tree<tkey, tvalue, compare, tag>::infix_reverse_iterator::d
     return _base.depth();
 }
 
-// endregion infix_reverse_iterator implementation
-
-// region infix_const_reverse_iterator implementation
 
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 binary_search_tree<tkey, tvalue, compare, tag>::infix_const_reverse_iterator::infix_const_reverse_iterator(const node* data, const node* backup) : _base(data, backup)
@@ -1846,9 +1715,6 @@ size_t binary_search_tree<tkey, tvalue, compare, tag>::infix_const_reverse_itera
     return _base->depth();
 }
 
-// endregion infix_const_reverse_iterator implementation
-
-// region postfix_iterator implementation
 
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 binary_search_tree<tkey, tvalue, compare, tag>::postfix_iterator::postfix_iterator(node* data, node* backup) : _data(data), _backup(backup)
@@ -1980,9 +1846,6 @@ size_t binary_search_tree<tkey, tvalue, compare, tag>::postfix_iterator::depth()
     return depth;
 }
 
-// endregion postfix_iterator implementation
-
-// region postfix_const_iterator implementation
 
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 binary_search_tree<tkey, tvalue, compare, tag>::postfix_const_iterator::postfix_const_iterator(const node* data, const node* backup) : _base(const_cast<node*>(data), const_cast<node*>(backup))
@@ -2060,9 +1923,6 @@ size_t binary_search_tree<tkey, tvalue, compare, tag>::postfix_const_iterator::d
     return _base.depth();
 }
 
-// endregion postfix_const_iterator implementation
-
-// region postfix_reverse_iterator implementation
 
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 binary_search_tree<tkey, tvalue, compare, tag>::postfix_reverse_iterator::postfix_reverse_iterator(node* data, node* backup) : _base(data, backup)
@@ -2156,9 +2016,6 @@ size_t binary_search_tree<tkey, tvalue, compare, tag>::postfix_reverse_iterator:
     return _base.depth();
 }
 
-// endregion postfix_reverse_iterator implementation
-
-// region postfix_const_reverse_iterator implementation
 
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 binary_search_tree<tkey, tvalue, compare, tag>::postfix_const_reverse_iterator::postfix_const_reverse_iterator(const node* data, const node* backup) : _base(const_cast<node*>(data), const_cast<node*>(backup))
@@ -2252,9 +2109,6 @@ size_t binary_search_tree<tkey, tvalue, compare, tag>::postfix_const_reverse_ite
     return _base.depth();
 }
 
-// endregion postfix_const_reverse_iterator implementation
-
-// region binary_search_tree implementation
 
 template <typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 binary_search_tree<tkey, tvalue, compare, tag>::binary_search_tree(const compare &comp, pp_allocator<value_type> alloc,
@@ -2294,10 +2148,6 @@ binary_search_tree<tkey, tvalue, compare, tag>::binary_search_tree(std::initiali
     }
 }
 
-// endregion binary_search_tree implementation
-
-
-// region binary_search_tree 5_rules implementation
 
 template <typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 binary_search_tree<tkey, tvalue, compare, tag>::binary_search_tree(const binary_search_tree &other)
@@ -2359,10 +2209,6 @@ binary_search_tree<tkey, tvalue, compare, tag>::~binary_search_tree()
     clear(_root);
 }
 
-// endregion binary_search_tree 5_rules implementation
-
-
-// region binary_search_tree methods_access implementation
 
 template <typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 tvalue &binary_search_tree<tkey, tvalue, compare, tag>::at(const tkey &key)
@@ -2429,11 +2275,11 @@ tvalue &binary_search_tree<tkey, tvalue, compare, tag>::operator[](const tkey &k
             }
             else
             {
-                return current->data.second; // found
+                return current->data.second;
             }
         }
 
-        // not found
+
         throw std::out_of_range("Key not found");
     }
 }
@@ -2458,7 +2304,7 @@ tvalue &binary_search_tree<tkey, tvalue, compare, tag>::operator[](tkey &&key)
         }
         else
         {
-            return current->data.second; // Ключ найден, возвращаем значение
+            return current->data.second;
         }
     }
     throw std::out_of_range("Key not found");
@@ -2493,10 +2339,6 @@ void binary_search_tree<tkey, tvalue, compare, tag>::clear(node *n)
     }
 }
 
-// endregion binary_search_tree methods_access implementation
-
-
-// region binary_search_tree methods_insert and methods_emplace implementation
 
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 std::pair<typename binary_search_tree<tkey, tvalue, compare, tag>::infix_iterator, bool>
@@ -2519,18 +2361,18 @@ binary_search_tree<tkey, tvalue, compare, tag>::insert(const value_type& value)
         }
         else
         {
-            // Ключ уже существует
+
             return std::make_pair(infix_iterator(current), false);
         }
     }
 
-    // Создание нового узла
+
     node* new_node = __detail::bst_impl<tkey, tvalue, compare, tag>::create_node(*this, parent, value);
 
-    // Установка нового узла в дерево
+
     if (parent == nullptr)
     {
-        _root = new_node; // Дерево было пустым
+        _root = new_node;
     }
     else if (compare_keys(new_node->data.first, parent->data.first))
     {
@@ -2541,13 +2383,14 @@ binary_search_tree<tkey, tvalue, compare, tag>::insert(const value_type& value)
         parent->right_subtree = new_node;
     }
 
-    ++_size; // Увеличение размера дерева
+    ++_size;
 
     if (_logger)
     {
         _logger->log("Successfully inserted new node", logger::severity::debug);
     }
 
+    __detail::bst_impl<tkey, tvalue, compare, tag>::post_insert(*this, &new_node);
     return std::make_pair(infix_iterator(new_node), true);
 }
 
@@ -2558,7 +2401,6 @@ binary_search_tree<tkey, tvalue, compare, tag>::insert(value_type&& value)
     node* current = _root;
     node* parent = nullptr;
 
-    // Поиск подходящего места для вставки
     while (current != nullptr)
     {
         parent = current;
@@ -2572,18 +2414,16 @@ binary_search_tree<tkey, tvalue, compare, tag>::insert(value_type&& value)
         }
         else
         {
-            // Ключ уже существует
+
             return std::make_pair(infix_iterator(current), false);
         }
     }
 
-    // Создание нового узла с использованием перемещающего конструктора
     node* new_node = __detail::bst_impl<tkey, tvalue, compare, tag>::create_node(*this, parent, std::move(value));
 
-    // Установка нового узла в дерево
     if (parent == nullptr)
     {
-        _root = new_node; // Дерево было пустым
+        _root = new_node;
     }
     else if (compare_keys(new_node->data.first, parent->data.first))
     {
@@ -2594,13 +2434,12 @@ binary_search_tree<tkey, tvalue, compare, tag>::insert(value_type&& value)
         parent->right_subtree = new_node;
     }
 
-    ++_size; // Увеличение размера дерева
-
+    ++_size;
     if (_logger)
     {
         _logger->log("Successfully inserted new node with move semantics", logger::severity::debug);
     }
-
+    __detail::bst_impl<tkey, tvalue, compare, tag>::post_insert(*this, &new_node);
     return std::make_pair(infix_iterator(new_node), true);
 }
 
@@ -2610,7 +2449,7 @@ void binary_search_tree<tkey, tvalue, compare, tag>::insert(InputIt first, Input
 {
     for (auto it = first; it != last; ++it)
     {
-        insert(*it); // Вставляем каждый элемент из диапазона
+        insert(*it);
     }
 }
 
@@ -2620,7 +2459,7 @@ void binary_search_tree<tkey, tvalue, compare, tag>::insert_range(R&& rg)
 {
     for (auto&& element : rg)
     {
-        insert(std::forward<decltype(element)>(element)); // Вставляем каждый элемент из диапазона
+        insert(std::forward<decltype(element)>(element));
     }
 }
 
@@ -2640,7 +2479,7 @@ binary_search_tree<tkey, tvalue, compare, tag>::insert_or_assign(const value_typ
     node* current = _root;
     node* parent = nullptr;
 
-    // Поиск узла с таким же ключом или подходящего места для вставки
+
     while (current != nullptr)
     {
         parent = current;
@@ -2654,19 +2493,19 @@ binary_search_tree<tkey, tvalue, compare, tag>::insert_or_assign(const value_typ
         }
         else
         {
-            // Ключ найден, обновляем значение
+
             current->data.second = value.second;
             return infix_iterator(current);
         }
     }
 
-    // Создание нового узла
+
     node* new_node = __detail::bst_impl<tkey, tvalue, compare, tag>::create_node(*this, parent, value);
 
-    // Установка нового узла в дерево
+
     if (parent == nullptr)
     {
-        _root = new_node; // Дерево было пустым
+        _root = new_node;
     }
     else if (compare_keys(new_node->data.first, parent->data.first))
     {
@@ -2677,13 +2516,13 @@ binary_search_tree<tkey, tvalue, compare, tag>::insert_or_assign(const value_typ
         parent->right_subtree = new_node;
     }
 
-    ++_size; // Увеличение размера дерева
+    ++_size;
 
     if (_logger)
     {
         _logger->log("Inserted or assigned new node", logger::severity::debug);
     }
-
+    __detail::bst_impl<tkey, tvalue, compare, tag>::post_insert(*this, &new_node);
     return infix_iterator(new_node);
 }
 
@@ -2694,7 +2533,7 @@ binary_search_tree<tkey, tvalue, compare, tag>::insert_or_assign(value_type&& va
     node* current = _root;
     node* parent = nullptr;
 
-    // Поиск узла с таким же ключом или подходящего места для вставки
+
     while (current != nullptr)
     {
         parent = current;
@@ -2708,19 +2547,19 @@ binary_search_tree<tkey, tvalue, compare, tag>::insert_or_assign(value_type&& va
         }
         else
         {
-            // Ключ найден, обновляем значение
+
             current->data.second = std::move(value.second);
             return infix_iterator(current);
         }
     }
 
-    // Создание нового узла с использованием перемещающего конструктора
+
     node* new_node = __detail::bst_impl<tkey, tvalue, compare, tag>::create_node(*this, parent, std::move(value));
 
-    // Установка нового узла в дерево
+
     if (parent == nullptr)
     {
-        _root = new_node; // Дерево было пустым
+        _root = new_node;
     }
     else if (compare_keys(new_node->data.first, parent->data.first))
     {
@@ -2731,13 +2570,13 @@ binary_search_tree<tkey, tvalue, compare, tag>::insert_or_assign(value_type&& va
         parent->right_subtree = new_node;
     }
 
-    ++_size; // Увеличение размера дерева
+    ++_size;
 
     if (_logger)
     {
         _logger->log("Inserted or assigned new node with move semantics", logger::severity::debug);
     }
-
+    __detail::bst_impl<tkey, tvalue, compare, tag>::post_insert(*this, &new_node);
     return infix_iterator(new_node);
 }
 
@@ -2773,13 +2612,13 @@ template <class... Args>
 typename binary_search_tree<tkey, tvalue, compare, tag>::infix_iterator binary_search_tree<
     tkey, tvalue, compare, tag>::emplace_or_assign(Args &&...args)
 {
-    // Создаём временный объект пары ключ-значение из переданных аргументов
+
     value_type temp(std::forward<Args>(args)...);
 
     node* current = _root;
     node* parent = nullptr;
 
-    // Поиск узла с таким же ключом или подходящего места для вставки
+
     while (current != nullptr)
     {
         parent = current;
@@ -2793,19 +2632,19 @@ typename binary_search_tree<tkey, tvalue, compare, tag>::infix_iterator binary_s
         }
         else
         {
-            // Ключ найден, обновляем значение
+
             current->data.second = std::move(temp.second);
             return infix_iterator(current);
         }
     }
 
-    // Создание нового узла
+
     node* new_node = __detail::bst_impl<tkey, tvalue, compare, tag>::create_node(*this, parent, std::move(temp));
 
-    // Установка нового узла в дерево
+
     if (parent == nullptr)
     {
-        _root = new_node; // Дерево было пустым
+        _root = new_node;
     }
     else if (compare_keys(new_node->data.first, parent->data.first))
     {
@@ -2816,19 +2655,15 @@ typename binary_search_tree<tkey, tvalue, compare, tag>::infix_iterator binary_s
         parent->right_subtree = new_node;
     }
 
-    ++_size; // Увеличение размера дерева
+    ++_size;
 
     if (_logger)
     {
         _logger->log("Emplaced or assigned new node", logger::severity::debug);
     }
-
+    __detail::bst_impl<tkey, tvalue, compare, tag>::post_insert(*this, &new_node);
     return infix_iterator(new_node);
 }
-
-// endregion binary_search_tree methods_insert and methods_emplace implementation
-
-// region binary_search_tree swap_method implementation
 
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 void binary_search_tree<tkey, tvalue, compare, tag>::swap(binary_search_tree& other) noexcept
@@ -2869,9 +2704,6 @@ void binary_search_tree<tkey, tvalue, compare, tag>::swap(binary_search_tree& ot
     }
 }
 
-// endregion binary_search_tree swap_method implementation
-
-// region binary_search_tree methods_search and methods_erase implementation
 
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 bool binary_search_tree<tkey, tvalue, compare, tag>::contains(const tkey& key) const
@@ -3044,14 +2876,6 @@ typename binary_search_tree<tkey, tvalue, compare, tag>::infix_iterator binary_s
 
     auto next_temp = ++pos;
 
-//    if (target->right_subtree)
-//    {
-//        next = target->right_subtree;
-//        while (next->left_subtree)
-//        {
-//            next = next->left_subtree;
-//        }
-//    }
     if (target->left_subtree)
     {
         next = target->left_subtree;
@@ -3126,10 +2950,6 @@ size_t binary_search_tree<tkey, tvalue, compare, tag>::erase(const tkey &key)
     return 1;
 }
 
-// endregion binary_search_tree methods_search and methods_erase implementation
-
-// region infix_iterators requests implementation
-
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 typename binary_search_tree<tkey, tvalue, compare, tag>::infix_iterator
 binary_search_tree<tkey, tvalue, compare, tag>::begin() noexcept
@@ -3168,7 +2988,7 @@ binary_search_tree<tkey, tvalue, compare, tag>::end() noexcept
 
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 typename binary_search_tree<tkey, tvalue, compare, tag>::infix_const_iterator
-binary_search_tree<tkey, tvalue, compare, tag>::begin() const noexcept
+binary_search_tree<tkey, tvalue, compare, tag>:: begin() const noexcept
 {
     if (_root == nullptr)
     {
@@ -3302,9 +3122,6 @@ binary_search_tree<tkey, tvalue, compare, tag>::crend() const noexcept
     return rend();
 }
 
-// endregion infix_iterators requests implementation
-
-// region prefix_iterators requests implementation
 
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 typename binary_search_tree<tkey, tvalue, compare, tag>::prefix_iterator
@@ -3442,9 +3259,6 @@ binary_search_tree<tkey, tvalue, compare, tag>::crend_prefix() const noexcept
     return rend_prefix();
 }
 
-// endregion prefix_iterators requests implementation
-
-// region infix_iterators methods implementation
 
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 typename binary_search_tree<tkey, tvalue, compare, tag>::infix_iterator
@@ -3530,9 +3344,6 @@ binary_search_tree<tkey, tvalue, compare, tag>::crend_infix() const noexcept
     return crend();
 }
 
-// endregion infix_iterators methods implementation
-
-// region postfix_iterators requests implementation
 
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 typename binary_search_tree<tkey, tvalue, compare, tag>::postfix_iterator
@@ -3678,47 +3489,41 @@ binary_search_tree<tkey, tvalue, compare, tag>::crend_postfix() const noexcept
     return rend_postfix();
 }
 
-// endregion postfix_iterators requests implementation
-
-// endregion iterators requests implementation
-
-//region subtree rotations implementation
 
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 void binary_search_tree<tkey, tvalue, compare, tag>::small_left_rotation(node *&subtree_root) noexcept
 {
-    if (subtree_root == nullptr || subtree_root->right_subtree == nullptr)
-    {
-        return; // Невозможно выполнить малый левый поворот
+    if (subtree_root == nullptr || subtree_root->right_subtree == nullptr) {
+        return;
     }
 
     node* new_root = subtree_root->right_subtree;
     subtree_root->right_subtree = new_root->left_subtree;
-    if (new_root->left_subtree != nullptr)
-    {
+
+    if (new_root->left_subtree != nullptr) {
         new_root->left_subtree->parent = subtree_root;
     }
 
-    new_root->parent = subtree_root->parent;
 
-    if (subtree_root->parent)
-    {
-        if (subtree_root == subtree_root->parent->left_subtree) // обновляем ссылку родителя старого узла
-        {
-            subtree_root->parent->left_subtree = new_root;
-        }
-        else if (subtree_root == subtree_root->parent->right_subtree)
-        {
-            subtree_root->parent->right_subtree = new_root;
-        }
-    }
+    node* original_parent = subtree_root->parent;
+
 
     new_root->left_subtree = subtree_root;
     subtree_root->parent = new_root;
 
+
+    new_root->parent = original_parent;
+
+    if (original_parent != nullptr) {
+        if (subtree_root == original_parent->left_subtree) {
+            original_parent->left_subtree = new_root;
+        } else {
+            original_parent->right_subtree = new_root;
+        }
+    }
+
     subtree_root = new_root;
 }
-
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 void binary_search_tree<tkey, tvalue, compare, tag>::small_right_rotation(node *&subtree_root) noexcept
 {
@@ -3729,26 +3534,35 @@ void binary_search_tree<tkey, tvalue, compare, tag>::small_right_rotation(node *
 
     node* new_root = subtree_root->left_subtree;
     subtree_root->left_subtree = new_root->right_subtree;
+
+
     if (new_root->right_subtree != nullptr)
     {
         new_root->right_subtree->parent = subtree_root;
     }
 
-    if (subtree_root->parent)
-    {
-        if (subtree_root == subtree_root->parent->left_subtree) // обновляем ссылку родителя старого узла
-        {
-            subtree_root->parent->left_subtree = new_root;
-        }
-        else if (subtree_root == subtree_root->parent->right_subtree)
-        {
-            subtree_root->parent->right_subtree = new_root;
-        }
-    }
+
+    node* original_parent = subtree_root->parent;
 
 
     new_root->right_subtree = subtree_root;
     subtree_root->parent = new_root;
+
+
+    new_root->parent = original_parent;
+
+
+    if (original_parent != nullptr)
+    {
+        if (subtree_root == original_parent->left_subtree)
+        {
+            original_parent->left_subtree = new_root;
+        }
+        else
+        {
+            original_parent->right_subtree = new_root;
+        }
+    }
 
     subtree_root = new_root;
 }
@@ -3800,7 +3614,6 @@ void binary_search_tree<tkey, tvalue, compare, tag>::double_right_rotation(node 
     small_right_rotation(subtree_root);
 }
 
-//endregion subtree rotations implementation
 
 namespace __detail {
     template<typename tkey, typename tvalue, typename compare, typename tag>
@@ -3832,13 +3645,13 @@ namespace __detail {
 
         if (!node) return;
 
-        // Определяем количество потомков
+
         const bool has_left = node->left_subtree != nullptr;
         const bool has_right = node->right_subtree != nullptr;
 
         if (!has_left && !has_right)
         {
-            // Случай 1: Лист
+
             if (node->parent)
             {
                 if (node->parent->left_subtree == node)
@@ -3852,15 +3665,15 @@ namespace __detail {
             }
             else
             {
-                cont._root = nullptr; // Удаляем корень
+                cont._root = nullptr;
             }
             delete_node(cont, node_ptr);
         }
         else if (has_left != has_right)
         {
-            // Случай 2: Один потомок
+
             node_type* child = has_left ? node->left_subtree : node->right_subtree;
-            child->parent = node->parent; // Обновляем родителя у потомка
+            child->parent = node->parent;
 
             if (node->parent)
             {
@@ -3875,7 +3688,7 @@ namespace __detail {
             }
             else
             {
-                cont._root = child; // Обновляем корень
+                cont._root = child;
             }
 
             delete_node(cont, node_ptr);
@@ -3891,7 +3704,7 @@ namespace __detail {
 
             node_type* successor = *successor_ptr;
 
-            // Удаляем successor из его текущего положения
+
             if (successor->parent->left_subtree == successor)
                 successor->parent->left_subtree = successor->right_subtree;
             else
@@ -3900,7 +3713,7 @@ namespace __detail {
             if (successor->right_subtree)
                 successor->right_subtree->parent = successor->parent;
 
-            // Подставляем successor вместо удаляемого узла
+
             successor->left_subtree = node->left_subtree;
             if (successor->left_subtree)
                 successor->left_subtree->parent = successor;
