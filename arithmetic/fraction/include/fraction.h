@@ -34,6 +34,8 @@ public:
 
     fraction operator-(fraction const &other) const;
 
+    fraction operator-() const;
+
     fraction &operator*=(fraction const &other) &;
 
     fraction operator*(fraction const &other) const;
