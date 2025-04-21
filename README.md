@@ -4,6 +4,7 @@
 - trivial multiplication (+)
 - Karatsuba multiplication (+)
 - trivial division (+)
+- fraction
 - global heap allocator (+)
 - buddies system allocator 
 - boundary system allocator
