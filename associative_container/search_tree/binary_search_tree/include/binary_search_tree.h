@@ -1812,7 +1812,7 @@ typename binary_search_tree<tkey, tvalue, compare, tag>::postfix_iterator const
 binary_search_tree<tkey, tvalue, compare, tag>::postfix_iterator::operator--(int not_used) const noexcept
 {
     postfix_iterator tmp = *this;
-    --_data;
+    --(*this);
     return *this;
 }
 
@@ -2281,6 +2281,23 @@ tvalue &binary_search_tree<tkey, tvalue, compare, tag>::operator[](const tkey &k
 
 
         throw std::out_of_range("Key not found");
+        // Исправление: вместо исключения вставляем новый узел.
+        // node *new_node = __detail::bst_impl<tkey, tvalue, compare, tag>::create_node(
+        //     *this, parent, value_type(key, tvalue()));
+        // if (parent == nullptr)
+        // {
+        //     _root = new_node;
+        // }
+        // else if (compare_keys(key, parent->data.first))
+        // {
+        //     parent->left_subtree = new_node;
+        // }
+        // else
+        // {
+        //     parent->right_subtree = new_node;
+        // }
+        // ++_size;
+        // return new_node->data.second;
     }
 }
 
@@ -2308,6 +2325,23 @@ tvalue &binary_search_tree<tkey, tvalue, compare, tag>::operator[](tkey &&key)
         }
     }
     throw std::out_of_range("Key not found");
+    // Исправление: вместо исключения вставляем новый узел.
+    // node *new_node = __detail::bst_impl<tkey, tvalue, compare, tag>::create_node(
+    //     *this, parent, value_type(std::move(key), tvalue()));
+    // if (parent == nullptr)
+    // {
+    //     _root = new_node;
+    // }
+    // else if (compare_keys(key, parent->data.first))
+    // {
+    //     parent->left_subtree = new_node;
+    // }
+    // else
+    // {
+    //     parent->right_subtree = new_node;
+    // }
+    // ++_size;
+    // return new_node->data.second;
 }
 
 template <typename tkey, typename tvalue, compator<tkey> compare, typename tag>
