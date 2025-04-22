@@ -443,11 +443,108 @@ void *allocator_boundary_tags::do_allocate_empty_block() {
     }
 }
 
-void allocator_boundary_tags::do_deallocate_sm(
-    void *at)
+// void allocator_boundary_tags::do_deallocate_sm(
+//     void *at)
+// {
+//     try {
+//         if (at == nullptr || _trusted_memory == nullptr) {
+//             return;
+//         }
+//
+//         if (get_logger() != nullptr) {
+//             get_logger()->log("do_deallocate_sm called", logger::severity::debug);
+//         }
+//
+//         std::lock_guard<std::mutex> lock(_mutex);
+//         block_header* block = get_header_from_user_data(at);
+//         char* block_ptr = reinterpret_cast<char*>(block);
+//         char* memory_start = reinterpret_cast<char*>(_trusted_memory);
+//
+//         if (block_ptr < memory_start) {
+//             if (get_logger() != nullptr) {
+//                 get_logger()->log("Invalid deallocation address", logger::severity::error);
+//             }
+//             return;
+//         }
+//
+//         if (get_logger() != nullptr) {
+//             get_logger()->log("[DEBUG do_deallocate_sm] Deallocating block of size: " + std::to_string(get_block_size(block)), logger::severity::debug);
+//         }
+//
+//         set_block_occupied(block, false);
+//
+//         if (block->next_block != nullptr && !is_block_occupied(block->next_block)) {
+//             block_header* next_block = block->next_block;
+//
+//             if (get_logger() != nullptr) {
+//                 get_logger()->log("[DEBUG do_deallocate_sm] Coalescing with next block. Current size: " + std::to_string(get_block_size(block)) +
+//                                  ", Next block size: " + std::to_string(get_block_size(next_block)), logger::severity::debug);
+//             }
+//
+//             set_block_size(block, get_block_size(block) + get_block_size(next_block));
+//
+//             block->next_block = next_block->next_block;
+//             if (next_block->next_block != nullptr) {
+//                 next_block->next_block->prev_block = block;
+//             }
+//         }
+//
+//         if (block->prev_block != nullptr && !is_block_occupied(block->prev_block)) {
+//             block_header* prev_block = block->prev_block;
+//
+//             if (get_logger() != nullptr) {
+//                 get_logger()->log("[DEBUG do_deallocate_sm] Coalescing with previous block. Current size: " + std::to_string(get_block_size(block)) +
+//                                  ", Previous block size: " + std::to_string(get_block_size(prev_block)), logger::severity::debug);
+//             }
+//
+//             set_block_size(prev_block, get_block_size(prev_block) + get_block_size(block));
+//
+//             prev_block->next_block = block->next_block;
+//             if (block->next_block != nullptr) {
+//                 block->next_block->prev_block = prev_block;
+//             }
+//         }
+//
+//         if (get_logger() != nullptr) {
+//             std::string blocks_state;
+//             auto blocks = get_blocks_info_inner();
+//             for (const auto& b : blocks) {
+//                 blocks_state += (b.is_block_occupied ? "occup " : "avail ") + std::to_string(b.block_size) + "|";
+//             }
+//             if (!blocks_state.empty()) blocks_state.pop_back();
+//             get_logger()->log("Blocks state after deallocation: " + blocks_state, logger::severity::debug);
+//
+//             size_t total_free = 0;
+//             for (const auto& b : blocks) {
+//                 if (!b.is_block_occupied) {
+//                     total_free += b.block_size;
+//                 }
+//             }
+//             get_logger()->log("Available memory after deallocation: " + std::to_string(total_free),
+//                              logger::severity::information);
+//         }
+//     }
+//     catch (const std::exception& e) {
+//         if (get_logger() != nullptr) {
+//             get_logger()->log("Exception during deallocation: " + std::string(e.what()), logger::severity::error);
+//         }
+//     }
+// }
+
+void *allocator_boundary_tags::get_parent_block(void* start) noexcept {
+        auto byte_ptr = reinterpret_cast<std::byte*>(start);
+        return *reinterpret_cast<void**>(byte_ptr + sizeof(size_t) + sizeof(void*) + sizeof(void*));
+}
+
+
+
+void allocator_boundary_tags::do_deallocate_sm(void *at)
 {
     try {
         if (at == nullptr || _trusted_memory == nullptr) {
+            if (get_logger() != nullptr) {
+                get_logger()->log("do_deallocate_sm: null pointer or uninitialized pool", logger::severity::debug);
+            }
             return;
         }
 
@@ -460,11 +557,49 @@ void allocator_boundary_tags::do_deallocate_sm(
         char* block_ptr = reinterpret_cast<char*>(block);
         char* memory_start = reinterpret_cast<char*>(_trusted_memory);
 
-        if (block_ptr < memory_start) {
+
+        size_t pool_size = 0;
+        block_header* current = static_cast<block_header*>(_trusted_memory);
+        while (current != nullptr) {
+            pool_size += get_block_size(current);
+            current = current->next_block;
+        }
+
+        char* memory_end = memory_start + pool_size;
+
+
+        if (block_ptr < memory_start || block_ptr >= memory_end) {
             if (get_logger() != nullptr) {
-                get_logger()->log("Invalid deallocation address", logger::severity::error);
+                get_logger()->log("Invalid deallocation address: outside pool bounds", logger::severity::error);
             }
             return;
+        }
+
+
+        bool is_valid_user_data = false;
+        current = static_cast<block_header*>(_trusted_memory);
+        while (current != nullptr) {
+            void* user_data = get_user_data(current);
+            if (user_data == at) {
+                is_valid_user_data = true;
+                block = current;
+                break;
+            }
+            current = current->next_block;
+        }
+
+        if (!is_valid_user_data) {
+            if (get_logger() != nullptr) {
+                get_logger()->log("Invalid deallocation address: not the start of a valid block's user data", logger::severity::error);
+            }
+            return;
+        }
+
+        std::byte* block_start = reinterpret_cast<std::byte*>(at) - occupied_block_metadata_size;
+        if (get_parent_block(block_start) != _trusted_memory) {
+            error_with_guard("Deallocation attempt for foreign block at " +
+                             std::to_string(reinterpret_cast<uintptr_t>(at)));
+            throw std::logic_error("Attempt to deallocate memory not owned by this allocator");
         }
 
         if (get_logger() != nullptr) {
@@ -473,36 +608,35 @@ void allocator_boundary_tags::do_deallocate_sm(
 
         set_block_occupied(block, false);
 
+
         if (block->next_block != nullptr && !is_block_occupied(block->next_block)) {
             block_header* next_block = block->next_block;
-
             if (get_logger() != nullptr) {
                 get_logger()->log("[DEBUG do_deallocate_sm] Coalescing with next block. Current size: " + std::to_string(get_block_size(block)) +
                                  ", Next block size: " + std::to_string(get_block_size(next_block)), logger::severity::debug);
             }
 
             set_block_size(block, get_block_size(block) + get_block_size(next_block));
-
             block->next_block = next_block->next_block;
             if (next_block->next_block != nullptr) {
                 next_block->next_block->prev_block = block;
             }
         }
 
+
         if (block->prev_block != nullptr && !is_block_occupied(block->prev_block)) {
             block_header* prev_block = block->prev_block;
-
             if (get_logger() != nullptr) {
                 get_logger()->log("[DEBUG do_deallocate_sm] Coalescing with previous block. Current size: " + std::to_string(get_block_size(block)) +
                                  ", Previous block size: " + std::to_string(get_block_size(prev_block)), logger::severity::debug);
             }
 
             set_block_size(prev_block, get_block_size(prev_block) + get_block_size(block));
-
             prev_block->next_block = block->next_block;
             if (block->next_block != nullptr) {
                 block->next_block->prev_block = prev_block;
             }
+            block = prev_block;
         }
 
         if (get_logger() != nullptr) {
@@ -528,6 +662,7 @@ void allocator_boundary_tags::do_deallocate_sm(
         if (get_logger() != nullptr) {
             get_logger()->log("Exception during deallocation: " + std::string(e.what()), logger::severity::error);
         }
+        throw;
     }
 }
 

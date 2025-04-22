@@ -69,6 +69,8 @@ public:
     void do_deallocate_sm(
         void *at) override;
 
+    void* get_parent_block(void* start) noexcept;
+
     bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override;
 
 private:

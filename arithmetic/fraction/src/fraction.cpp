@@ -4,7 +4,7 @@
 #include <sstream>
 #include <regex>
 
-// Helper function to calculate greatest common divisor (GCD)
+
 big_int gcd(big_int a, big_int b) {
     if (a < 0) a = -a;
     if (b < 0) b = -b;
@@ -119,7 +119,7 @@ std::partial_ordering fraction::operator<=>(const fraction& other) const noexcep
     if (lhs < rhs) return std::partial_ordering::less;
     if (lhs > rhs) return std::partial_ordering::greater;
     return std::partial_ordering::equivalent;
-}
+}s
 
 std::ostream &operator<<(std::ostream &stream, fraction const &obj) {
     stream << obj.to_string();
