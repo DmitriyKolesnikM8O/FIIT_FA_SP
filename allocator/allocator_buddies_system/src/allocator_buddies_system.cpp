@@ -488,6 +488,12 @@ void allocator_buddies_system::do_deallocate_sm(void* at) {
         throw std::invalid_argument("Block does not belong to this allocator");
     }
 
+    void** parent = reinterpret_cast<void**>(reinterpret_cast<char*>(at) - sizeof(void**));
+
+    if ((*parent != _trusted_memory)) {
+        throw std::runtime_error("do_deallocate_sm - invalid block");
+    }
+
     if (!is_block_occupied(block_meta)) {
         if (meta->logger_ptr) {
             meta->logger_ptr->log("Block already free", logger::severity::error);

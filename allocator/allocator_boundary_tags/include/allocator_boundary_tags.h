@@ -19,33 +19,59 @@ class allocator_boundary_tags final :
 
 private:
 
-    /**
-     * TODO: You must improve it for alignment support
-     */
-    static constexpr const size_t allocator_metadata_size = sizeof(logger*) + sizeof(memory_resource*) + sizeof(allocator_with_fit_mode::fit_mode) +
-                                                            sizeof(size_t) + sizeof(std::mutex) + sizeof(void*);
+    struct block_metadata
+    {
+     
+        size_t block_size_;
+        block_metadata* next_ = nullptr;
+        block_metadata* prev_ = nullptr;
+     
+        void* tm_ptr_;
+
+        std::byte* block_end() noexcept
+        {
+            return reinterpret_cast<std::byte*>(this) + sizeof(block_metadata) + block_size_;
+        }
+
+        const std::byte* block_end() const noexcept
+        {
+            return reinterpret_cast<const std::byte*>(this) + sizeof(block_metadata) + block_size_;
+        }
+    };
+
+    struct allocator_metadata
+    {
+        logger* logger_;
+     
+     
+        fit_mode fit_mode_;
+     
+        size_t mem_size_;
+     
+        std::mutex mutex_;
+     
+        block_metadata* first_block_;
+     
+        memory_resource* allocator_;
+
+        const std::byte* allocator_end() const noexcept
+        {
+            return reinterpret_cast<const std::byte*>(this) + sizeof(allocator_metadata) + mem_size_;
+        }
+    };
 
     static constexpr const size_t occupied_block_metadata_size = sizeof(size_t) + sizeof(void*) + sizeof(void*) + sizeof(void*);
-
-    static constexpr const size_t free_block_metadata_size = 0;
-
     void *_trusted_memory;
-
-    logger* _logger = nullptr;
-
-    // Member mutex for synchronization instead of global mutex
-    mutable std::mutex _mutex;
-
-    // Instance member for fit mode instead of static variable
-    allocator_with_fit_mode::fit_mode _current_fit_mode = allocator_with_fit_mode::fit_mode::first_fit;
 
 public:
 
     ~allocator_boundary_tags() override;
 
-    allocator_boundary_tags(allocator_boundary_tags const &other);
+    allocator_boundary_tags(allocator_boundary_tags const &other) = delete;
 
-    allocator_boundary_tags &operator=(allocator_boundary_tags const &other);
+    allocator_boundary_tags &operator=(allocator_boundary_tags const &other) = delete;
+
+    
 
     allocator_boundary_tags(
         allocator_boundary_tags &&other) noexcept;
@@ -69,20 +95,12 @@ public:
     void do_deallocate_sm(
         void *at) override;
 
-    void* get_parent_block(void* start) noexcept;
-
     bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override;
 
-private:
-    // Helper method for allocating empty blocks (size 0)
-    [[nodiscard]] void *do_allocate_empty_block();
-
 public:
-
+    inline void set_first_block(void *block);
     inline void set_fit_mode(
         allocator_with_fit_mode::fit_mode mode) override;
-
-    inline allocator_with_fit_mode::fit_mode get_fit_mode() const;
 
 public:
 
@@ -92,18 +110,29 @@ private:
 
     std::vector<allocator_test_utils::block_info> get_blocks_info_inner() const override;
 
-    // Вспомогательная функция для вывода информации о блоках памяти
-    inline void log_blocks_state() const;
 
-/** TODO: Highly recommended for helper functions to return references */
 
     inline logger *get_logger() const override;
 
     inline std::string get_typename() const noexcept override;
 
-    const std::mutex& mutex() const;
+    inline allocator_metadata& get_allocator_metadata() const noexcept;
 
-    void set_logger(logger* log);
+    static inline allocator_metadata& get_allocator_metadata(void* trusted) noexcept;
+
+    static inline const allocator_metadata& get_allocator_metadata(const void* trusted) noexcept;
+
+    inline block_metadata* get_block_first_fit(size_t size) const noexcept;
+
+    inline block_metadata* get_block_best_fit(size_t size) const noexcept;
+
+    inline block_metadata* get_block_worst_fit(size_t size) const noexcept;
+
+    inline size_t get_next_free_block_size(const block_metadata* block) const noexcept;
+
+    static inline size_t get_next_free_block_size(void* trusted, const block_metadata* block) noexcept;
+
+    inline size_t get_available_memory() const noexcept;
 
     class boundary_iterator
     {
