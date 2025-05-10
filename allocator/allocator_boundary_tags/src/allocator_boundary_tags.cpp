@@ -164,33 +164,34 @@ void allocator_boundary_tags::do_deallocate_sm(
 
     debug_with_guard(get_dump(static_cast<char*>(at), block->block_size_));
 
-    void *block_2 = static_cast<char *>(at) - occupied_block_metadata_size;
-    void *prev = *reinterpret_cast<void **>(block_2);
-
-    void *next = *reinterpret_cast<void **>(static_cast<char *>(block_2) + sizeof(void *));
-
-    if (prev)
-            *reinterpret_cast<void **>(static_cast<char *>(prev) + sizeof(void *)) = next;
-    else
-        set_first_block(next);
-
-    if (next)
-        *reinterpret_cast<void **>(next) = prev;
+    //Because this!
+    // void *block_2 = static_cast<char *>(at) - occupied_block_metadata_size;
+    // void *prev = *reinterpret_cast<void **>(block_2);
+    //
+    // void *next = *reinterpret_cast<void **>(static_cast<char *>(block_2) + sizeof(void *));
+    //
+    // if (prev)
+    //         *reinterpret_cast<void **>(static_cast<char *>(prev) + sizeof(void *)) = next;
+    // else
+    //     set_first_block(next);
+    //
+    // if (next)
+    //     *reinterpret_cast<void **>(next) = prev;
     
 
-    // if (block->prev_ == _trusted_memory)
-    // {
-    //     metadata.first_block_ = block->next_;
-    // }
-    // else
-    // {
-    //     block->prev_->next_ = block->next_;
-    // }
+    if (block->prev_ == _trusted_memory)
+    {
+        metadata.first_block_ = block->next_;
+    }
+    else
+    {
+        block->prev_->next_ = block->next_;
+    }
 
-    // if (block->next_)
-    // {
-    //     block->next_->prev_ = block->prev_;
-    // }
+    if (block->next_)
+    {
+        block->next_->prev_ = block->prev_;
+    }
 
     
 
