@@ -11,6 +11,8 @@
 - sorted list allocator
 - BST (+)
 - AVL
+- B tree
+- B tree disk
 
 
 Summary: 14 of 17
