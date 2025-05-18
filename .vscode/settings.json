@@ -81,7 +81,10 @@
         "typeindex": "cpp",
         "typeinfo": "cpp",
         "valarray": "cpp",
-        "variant": "cpp"
+        "variant": "cpp",
+        "filesystem": "cpp",
+        "stack": "cpp",
+        "cassert": "cpp"
     },
     "cmake.configureOnOpen": false
 }
