@@ -1492,56 +1492,187 @@ B_tree<tkey, tvalue, compare, t>::erase(btree_const_iterator beg, btree_const_it
 template<typename tkey, typename tvalue, compator<tkey> compare, std::size_t t>
 typename B_tree<tkey, tvalue, compare, t>::btree_iterator
 B_tree<tkey, tvalue, compare, t>::erase(const tkey& key) {
-	if (!_root) return end();
+    if (!_root) return end();
 
-	std::function<bool(btree_node*, const tkey&)> remove_key;
-	remove_key = [this, &remove_key](btree_node* node, const tkey& k) -> bool {
-		size_t idx = 0;
-		while (idx < node->_keys.size() && compare_keys(node->_keys[idx].first, k)) ++idx;
-		if (idx < node->_keys.size() && !compare_keys(k, node->_keys[idx].first) && !compare_keys(node->_keys[idx].first, k)) {
-			if (node->_pointers.empty()) {
-				node->_keys.erase(node->_keys.begin() + idx);
-				--_size;
-				return node->_keys.size() < minimum_keys_in_node;
-			} else {
-				btree_node* pred = node->_pointers[idx];
-				while (!pred->_pointers.empty()) pred = pred->_pointers.back();
-				auto pred_pair = pred->_keys.back();
-				node->_keys[idx] = pred_pair;
-				bool underflow = remove_key(node->_pointers[idx], pred_pair.first);
 
-				if (underflow) {
-					node->_pointers[idx]->_keys.push_back({});
-				}
-				return false;
-			}
-		}
+    auto merge_nodes = [](btree_node* parent, size_t child_idx) -> btree_node* {
+        btree_node* left_child = parent->_pointers[child_idx];
+        btree_node* right_child = parent->_pointers[child_idx + 1];
 
-		if (node->_pointers.empty()) {
-			return node->_keys.size() < minimum_keys_in_node;
-		}
 
-		bool underflow = remove_key(node->_pointers[idx], k);
-		if (underflow) {
-			//borrow / merge
-		}
-		return false;
-	};
+        left_child->_keys.push_back(parent->_keys[child_idx]);
 
-	remove_key(_root, key);
 
-	if (_root->_keys.empty()) {
-		btree_node* old = _root;
-		if (!_root->_pointers.empty()) {
-			_root = _root->_pointers[0];
-		} else {
-			_root = nullptr;
-		}
-		delete old;
-	}
+        left_child->_keys.insert(
+            left_child->_keys.end(),
+            right_child->_keys.begin(),
+            right_child->_keys.end()
+        );
 
-	return find(key);
+
+        if (!right_child->_pointers.empty()) {
+            left_child->_pointers.insert(
+                left_child->_pointers.end(),
+                right_child->_pointers.begin(),
+                right_child->_pointers.end()
+            );
+        }
+
+
+        parent->_keys.erase(parent->_keys.begin() + child_idx);
+
+        parent->_pointers.erase(parent->_pointers.begin() + child_idx + 1);
+
+
+        btree_node* node_to_delete = right_child;
+
+        return node_to_delete;
+    };
+
+
+    auto borrow_from_left = [](btree_node* parent, size_t child_idx) {
+        btree_node* child = parent->_pointers[child_idx];
+        btree_node* left_sibling = parent->_pointers[child_idx - 1];
+
+
+        child->_keys.insert(child->_keys.begin(), parent->_keys[child_idx - 1]);
+
+
+        parent->_keys[child_idx - 1] = left_sibling->_keys.back();
+        left_sibling->_keys.pop_back();
+
+
+        if (!left_sibling->_pointers.empty()) {
+            child->_pointers.insert(child->_pointers.begin(), left_sibling->_pointers.back());
+            left_sibling->_pointers.pop_back();
+        }
+    };
+
+
+    auto borrow_from_right = [](btree_node* parent, size_t child_idx) {
+        btree_node* child = parent->_pointers[child_idx];
+        btree_node* right_sibling = parent->_pointers[child_idx + 1];
+
+
+        child->_keys.push_back(parent->_keys[child_idx]);
+
+
+        parent->_keys[child_idx] = right_sibling->_keys.front();
+        right_sibling->_keys.erase(right_sibling->_keys.begin());
+
+
+        if (!right_sibling->_pointers.empty()) {
+            child->_pointers.push_back(right_sibling->_pointers.front());
+            right_sibling->_pointers.erase(right_sibling->_pointers.begin());
+        }
+    };
+
+
+    auto fix_underflow = [&](btree_node* parent, size_t child_idx) -> bool {
+        btree_node* child = parent->_pointers[child_idx];
+
+
+        if (child_idx > 0) {
+            btree_node* left_sibling = parent->_pointers[child_idx - 1];
+            if (left_sibling->_keys.size() > minimum_keys_in_node) {
+                borrow_from_left(parent, child_idx);
+                return false; // Недозаполнение устранено
+            }
+        }
+
+
+        if (child_idx < parent->_pointers.size() - 1) {
+            btree_node* right_sibling = parent->_pointers[child_idx + 1];
+            if (right_sibling->_keys.size() > minimum_keys_in_node) {
+                borrow_from_right(parent, child_idx);
+                return false;
+            }
+        }
+
+
+        btree_node* node_to_delete = nullptr;
+
+        if (child_idx > 0) {
+
+            node_to_delete = merge_nodes(parent, child_idx - 1);
+        } else {
+
+            node_to_delete = merge_nodes(parent, child_idx);
+        }
+
+        delete node_to_delete;
+
+
+        return parent->_keys.size() < minimum_keys_in_node;
+    };
+
+
+    std::function<bool(btree_node*, const tkey&)> remove_key;
+    remove_key = [this, &remove_key, &fix_underflow](btree_node* node, const tkey& k) -> bool {
+
+        size_t idx = 0;
+        while (idx < node->_keys.size() && compare_keys(node->_keys[idx].first, k)) ++idx;
+
+
+        bool key_found = idx < node->_keys.size() &&
+                        !compare_keys(k, node->_keys[idx].first) &&
+                        !compare_keys(node->_keys[idx].first, k);
+
+        if (key_found) {
+
+            if (node->_pointers.empty()) {
+                node->_keys.erase(node->_keys.begin() + idx);
+                --_size;
+                return node->_keys.size() < minimum_keys_in_node;
+            }
+            else {
+
+                btree_node* predecessor = node->_pointers[idx];
+                while (!predecessor->_pointers.empty())
+                    predecessor = predecessor->_pointers.back();
+
+
+                auto pred_pair = predecessor->_keys.back();
+
+
+                node->_keys[idx] = pred_pair;
+
+
+                bool underflow = remove_key(node->_pointers[idx], pred_pair.first);
+
+
+                if (underflow)
+                    return fix_underflow(node, idx);
+
+                return false;
+            }
+        }
+
+        if (node->_pointers.empty())
+            return false;
+        bool underflow = remove_key(node->_pointers[idx], k);
+
+        if (underflow)
+            return fix_underflow(node, idx);
+
+        return false;
+    };
+    bool root_underflow = remove_key(_root, key);
+
+    if (root_underflow && _root->_keys.empty() && !_root->_pointers.empty()) {
+        btree_node* old_root = _root;
+        _root = _root->_pointers[0];
+        delete old_root;
+    }
+
+    if (_root->_keys.empty() && _root->_pointers.empty()) {
+        delete _root;
+        _root = nullptr;
+    }
+
+    return find(key);
 }
+
 
 // endregion modifiers implementation
 
