@@ -165,6 +165,8 @@ TEST(BTreeDiskTest, PersistenceSimpleTest) {
 
             ASSERT_TRUE(tree.insert(std::make_pair(SerializableInt(10), SerializableString("Ten"))));
             ASSERT_TRUE(tree.insert(std::make_pair(SerializableInt(20), SerializableString("Twenty"))));
+            ASSERT_TRUE(tree.insert(std::make_pair(SerializableInt(30), SerializableString("30"))));
+            ASSERT_TRUE(tree.insert(std::make_pair(SerializableInt(40), SerializableString("40"))));
         }
 
 
@@ -178,6 +180,12 @@ TEST(BTreeDiskTest, PersistenceSimpleTest) {
             auto val20 = tree.at(SerializableInt(20));
             ASSERT_TRUE(val20.has_value());
             EXPECT_EQ(val20.value().getValue(), "Twenty");
+            auto val30 = tree.at(SerializableInt(30));
+            ASSERT_TRUE(val30.has_value());
+            EXPECT_EQ(val30.value().getValue(), "30");
+            auto val40 = tree.at(SerializableInt(40));
+            ASSERT_TRUE(val40.has_value());
+            EXPECT_EQ(val40.value().getValue(), "40");
         }
     }
     catch (const std::exception& e) {
