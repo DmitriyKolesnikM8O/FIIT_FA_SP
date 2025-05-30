@@ -1,3 +1,7 @@
+<h1 align="center"> ЧТО ЭТО </h1>
+В репозитории содержатся лабораторные работы по дисциплинам: "Фундаментальные алгоритмы" и "Системное программирование" (ФИИТ, 4 семестр, 2024-2025).
+
+
 - client logger (+)
 - server logger (+)
 - big integer (+)
@@ -15,6 +19,6 @@
 - B tree disk (+)
 
 
-Summary: 17 of 17 (ALL DONE FOR 3)
+
 
 ![Visitor Count](https://komarev.com/ghpvc/?username=DmitriyKolesnikM8O&repo=FIIT_FA_SP&label=Visitors&color=007ec6&style=flat-square&abbreviated=true)
